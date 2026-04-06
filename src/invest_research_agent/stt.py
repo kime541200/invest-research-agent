@@ -30,6 +30,7 @@ class SttSettings:
     transcode_sample_rate: int = 16000
     segment_seconds: int = 1800
     always_preprocess: bool = False
+    response_format: str = "verbose_json"
 
     @property
     def is_enabled(self) -> bool:
@@ -67,6 +68,7 @@ def load_stt_settings(project_root: Path | str | None = None) -> SttSettings | N
     transcode_sample_rate = int(os.getenv("STT_TRANSCODE_SAMPLE_RATE", "16000") or 16000)
     segment_seconds = int(os.getenv("STT_SEGMENT_SECONDS", "1800") or 1800)
     always_preprocess = os.getenv("STT_ALWAYS_PREPROCESS", "").strip().casefold() in {"1", "true", "yes", "on"}
+    response_format = os.getenv("STT_RESPONSE_FORMAT", _get_default_response_format(provider)).strip() or "verbose_json"
     if provider.casefold() == "speaches":
         always_preprocess = True
 
@@ -83,6 +85,7 @@ def load_stt_settings(project_root: Path | str | None = None) -> SttSettings | N
         transcode_sample_rate=max(transcode_sample_rate, 8000),
         segment_seconds=max(segment_seconds, 60),
         always_preprocess=always_preprocess,
+        response_format=response_format,
     )
     return settings if settings.is_enabled else None
 
@@ -193,6 +196,12 @@ def _get_default_target_chunk_mb(provider: str, max_upload_mb: float) -> float:
     return max_upload_mb
 
 
+def _get_default_response_format(provider: str) -> str:
+    if provider.casefold() == "vllm-qwen3-asr":
+        return "json"
+    return "verbose_json"
+
+
 def _post_transcription_request(
     settings: SttSettings,
     audio_path: Path,
@@ -204,9 +213,10 @@ def _post_transcription_request(
 
     request_data: dict[str, Any] = {
         "model": settings.model,
-        "response_format": "verbose_json",
-        "timestamp_granularities[]": "segment",
+        "response_format": settings.response_format,
     }
+    if settings.response_format == "verbose_json":
+        request_data["timestamp_granularities[]"] = "segment"
     if language:
         request_data["language"] = language
 

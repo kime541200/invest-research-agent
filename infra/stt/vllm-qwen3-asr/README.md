@@ -47,6 +47,7 @@ STT_TARGET_CHUNK_MB=8
 STT_TRANSCODE_BITRATE=24k
 STT_TRANSCODE_SAMPLE_RATE=16000
 STT_SEGMENT_SECONDS=900
+STT_RESPONSE_FORMAT=json
 ```
 
 ## 備註
@@ -54,3 +55,4 @@ STT_SEGMENT_SECONDS=900
 - 官方 Docker image 預設不含 audio optional dependencies，所以這裡用自訂 `Dockerfile` 額外安裝 `vllm[audio]`。
 - 若未來 `Qwen3-ASR` 需要更新的 `transformers`，可在 `.env` 裡調整 `HF_TRANSFORMERS_SPEC`，例如改成 `git+https://github.com/huggingface/transformers.git`。
 - 即使是 GPU provider，也建議保留目前專案中的音訊轉碼與切塊前處理，避免長音檔拖慢整體轉寫流程。
+- 目前這個模型在 vLLM 上實測可用 `response_format=json`，不保證支援 `verbose_json` 與 `segments`；專案會自動退回全文保存模式。

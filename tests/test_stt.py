@@ -10,6 +10,7 @@ from invest_research_agent.stt import (
     SttSettings,
     _calculate_segment_seconds,
     _get_default_target_chunk_mb,
+    _get_default_response_format,
     _to_transcript_bundle,
     check_stt_provider,
     load_stt_settings,
@@ -58,11 +59,17 @@ def test_load_stt_settings_from_environment(monkeypatch, tmp_path: Path) -> None
     assert settings.transcode_sample_rate == 22050
     assert settings.segment_seconds == 900
     assert settings.always_preprocess is True
+    assert settings.response_format == "verbose_json"
 
 
 def test_get_default_target_chunk_mb_uses_smaller_default_for_speaches() -> None:
     assert _get_default_target_chunk_mb("speaches", 24) == 8.0
     assert _get_default_target_chunk_mb("groq", 24) == 24
+
+
+def test_get_default_response_format_uses_json_for_vllm_qwen3_asr() -> None:
+    assert _get_default_response_format("vllm-qwen3-asr") == "json"
+    assert _get_default_response_format("speaches") == "verbose_json"
 
 
 def test_check_stt_provider_for_local_speaches(monkeypatch) -> None:
