@@ -11,8 +11,6 @@
 5. 產出標準化 Markdown 筆記到 `notes/YYYY-MM-DD/`
 6. 更新 `resources.yaml` 的 `last_checked_video_title`，避免重複處理
 
-`NotebookLM` 目前不是核心成功路徑的一部分，後續會以獨立 grounding gateway 的方式接入。
-
 ## 快速開始
 
 如果你只想先把專案跑起來，建議照這個順序：
@@ -49,7 +47,6 @@ python -m info_collector route-topic --topic "AI 新創與科技商業趨勢"
 ├── docs/
 │   └── mcp-config/
 ├── modules/
-│   ├── notebooklm-skill/
 │   └── yt-mcp-server/
 ├── notes/
 ├── pyproject.toml
@@ -266,9 +263,18 @@ notes/YYYY-MM-DD/
 
 目前尚未完成或仍在後續階段的部分：
 
-- NotebookLM ingestion 自動化
-- 更強的 grounding workflow
+- 無字幕影片的替代內容擷取策略
 - 更完整的摘要與對話式分析能力
+
+## 持續追蹤觀察
+
+目前專案已先移除 `NotebookLM` 相關整合，原因是現階段缺少穩定、可自動化的 `add source` 能力，不適合納入主流程。
+
+後續若下列條件成熟，會再重新評估：
+
+- `notebooklm-skill` 或 `notebooklm-mcp` upstream 正式支援穩定的 `add source`
+- 能以程式方式把 YouTube 影片連結安全加入 notebook
+- ingestion 與問答流程的成功率足以支撐可重跑的自動化 pipeline
 
 ## 測試
 

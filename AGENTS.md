@@ -78,8 +78,8 @@
   - `python -m info_collector get-last-checked --channel [頻道名稱]`
   - `python -m info_collector update-last-checked --channel [頻道名稱] --title "[影片標題]"`
 
-## 5. NotebookLM 目前定位
+## 5. 目前產品邊界
 
-- `NotebookLM` 目前不是核心 pipeline 的必要依賴。
-- 第一階段先把 `主題 -> 頻道 -> 最新影片 -> 筆記` 做穩。
-- 若使用者後續想做更強的 grounding，可再透過 `modules/notebooklm-skill` 擴充，但不要把目前主流程綁死在 NotebookLM ingestion。
+- 目前先把 `主題 -> 頻道 -> 最新影片 -> 筆記` 這條主流程做穩。
+- 對於無字幕影片，現階段不依賴外部 grounding 流程或 NotebookLM 類型整合。
+- 若未來上游工具提供穩定的 `add source` 能力，再評估是否重新導入相關方案。
