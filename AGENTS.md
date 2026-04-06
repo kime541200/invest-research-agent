@@ -19,9 +19,9 @@
 - 優先使用新的 CLI 入口：
   - `python -m info_collector route-topic --topic "[使用者主題]"`
 - 路由邏輯以 `resources.yaml` 中的 `tags`、`alias`、`topic_keywords` 為主，`description` 與 `priority` 為輔。
-- 若使用者給的是較明確的標籤需求，也可用舊指令檢查：
-  - `python scripts/load_scripts.py --get-all-tags`
-  - `python scripts/load_scripts.py --get-channels-by-tags [TAG...]`
+- 若使用者給的是較明確的標籤需求，也可直接使用：
+  - `python -m info_collector list-tags`
+  - `python -m info_collector get-channels-by-tags --tags [TAG...]`
 
 ### 步驟 2.2: 執行主題收集流程
 
@@ -74,8 +74,8 @@
 
 - 若使用 `python -m info_collector collect-from-topic ...`，狀態會自動寫回 `resources.yaml`。
 - 若需要手動修正狀態，可使用：
-  - `python scripts/load_scripts.py --get-last-checked-title [頻道名稱]`
-  - `python scripts/load_scripts.py --update-last-checked-title [頻道名稱] "[影片標題]"`
+  - `python -m info_collector get-last-checked --channel [頻道名稱]`
+  - `python -m info_collector update-last-checked --channel [頻道名稱] --title "[影片標題]"`
 
 ## 5. NotebookLM 目前定位
 

@@ -125,6 +125,47 @@ class CollectorOrchestrator:
     def list_tags(self) -> list[str]:
         return self.state_store.get_all_tags()
 
+    def list_channels(self, always_watch_only: bool = False) -> list[dict[str, Any]]:
+        channels = self.state_store.get_channels()
+        if always_watch_only:
+            channels = [channel for channel in channels if channel.always_watch]
+        return [
+            {
+                "channel": channel.name,
+                "url": channel.url,
+                "always_watch": channel.always_watch,
+            }
+            for channel in channels
+        ]
+
+    def get_channel_tags(self, channel_name: str) -> list[str] | None:
+        channel = self.state_store.get_channel(channel_name)
+        if channel is None:
+            return None
+        return channel.tags
+
+    def get_channels_by_tags(self, tags: list[str]) -> dict[str, list[dict[str, str]]]:
+        always_watch, optional_watch = self.state_store.get_channels_by_tags(tags)
+        return {
+            "always_watch": [
+                {"channel": channel.name, "url": channel.url}
+                for channel in always_watch
+            ],
+            "optional_watch": [
+                {"channel": channel.name, "url": channel.url}
+                for channel in optional_watch
+            ],
+        }
+
+    def get_last_checked_title(self, channel_name: str) -> str | None:
+        channel = self.state_store.get_channel(channel_name)
+        if channel is None:
+            return None
+        return channel.last_checked_video_title
+
+    def update_last_checked_title(self, channel_name: str, title: str) -> None:
+        self.state_store.update_last_checked_title(channel_name, title)
+
     def to_dict(self, result: CollectionResult) -> dict[str, Any]:
         data = asdict(result)
         for channel_result in data["channel_results"]:

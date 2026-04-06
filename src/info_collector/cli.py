@@ -69,6 +69,31 @@ def _build_parser() -> argparse.ArgumentParser:
     list_tags.add_argument("--json", action="store_true", help="輸出 JSON")
     list_tags.set_defaults(handler=_handle_list_tags)
 
+    list_channels = subparsers.add_parser("list-channels", help="列出所有頻道")
+    list_channels.add_argument("--always-watch", action="store_true", help="只列出 always_watch 頻道")
+    list_channels.add_argument("--json", action="store_true", help="輸出 JSON")
+    list_channels.set_defaults(handler=_handle_list_channels)
+
+    get_channel_tags = subparsers.add_parser("get-channel-tags", help="取得指定頻道的 tags")
+    get_channel_tags.add_argument("--channel", required=True, help="頻道名稱")
+    get_channel_tags.add_argument("--json", action="store_true", help="輸出 JSON")
+    get_channel_tags.set_defaults(handler=_handle_get_channel_tags)
+
+    channels_by_tags = subparsers.add_parser("get-channels-by-tags", help="依 tags 列出頻道")
+    channels_by_tags.add_argument("--tags", nargs="+", required=True, help="一個或多個 tags")
+    channels_by_tags.add_argument("--json", action="store_true", help="輸出 JSON")
+    channels_by_tags.set_defaults(handler=_handle_get_channels_by_tags)
+
+    get_last_checked = subparsers.add_parser("get-last-checked", help="查詢頻道最後確認的影片標題")
+    get_last_checked.add_argument("--channel", required=True, help="頻道名稱")
+    get_last_checked.add_argument("--json", action="store_true", help="輸出 JSON")
+    get_last_checked.set_defaults(handler=_handle_get_last_checked)
+
+    update_last_checked = subparsers.add_parser("update-last-checked", help="更新頻道最後確認的影片標題")
+    update_last_checked.add_argument("--channel", required=True, help="頻道名稱")
+    update_last_checked.add_argument("--title", required=True, help="新的影片標題")
+    update_last_checked.set_defaults(handler=_handle_update_last_checked)
+
     return parser
 
 
@@ -136,6 +161,63 @@ def _handle_list_tags(args: argparse.Namespace, orchestrator: CollectorOrchestra
     print("=== 所有不重複標籤 ===")
     for tag in tags:
         print(f"- {tag}")
+
+
+def _handle_list_channels(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+    channels = orchestrator.list_channels(always_watch_only=args.always_watch)
+    if args.json:
+        print(json.dumps(channels, ensure_ascii=False, indent=2))
+        return
+    title = "=== 必看頻道 ===" if args.always_watch else f"=== 全部頻道 ({len(channels)} 個) ==="
+    print(title)
+    for item in channels:
+        print(f"- {item['channel']}: {item['url']}")
+
+
+def _handle_get_channel_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+    tags = orchestrator.get_channel_tags(args.channel)
+    if tags is None:
+        raise SystemExit(f"找不到頻道: {args.channel}")
+    if args.json:
+        print(json.dumps(tags, ensure_ascii=False, indent=2))
+        return
+    print(f"{args.channel} 標籤: {', '.join(tags)}")
+
+
+def _handle_get_channels_by_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+    result = orchestrator.get_channels_by_tags(args.tags)
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
+    print(f"=== 包含標籤 {', '.join(args.tags)} 的頻道 ===")
+    if result["always_watch"]:
+        print("\n[必看頻道 - always_watch: true]")
+        for item in result["always_watch"]:
+            print(f"- {item['channel']}: {item['url']}")
+    if result["optional_watch"]:
+        print("\n[選看頻道 - always_watch: false]")
+        for item in result["optional_watch"]:
+            print(f"- {item['channel']}: {item['url']}")
+    if not result["always_watch"] and not result["optional_watch"]:
+        raise SystemExit("找不到符合的頻道")
+
+
+def _handle_get_last_checked(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+    title = orchestrator.get_last_checked_title(args.channel)
+    if title is None:
+        raise SystemExit(f"找不到頻道: {args.channel}")
+    if args.json:
+        print(json.dumps({"channel": args.channel, "last_checked_video_title": title}, ensure_ascii=False, indent=2))
+        return
+    print(f"{args.channel} 上次確認的影片: {title if title else '(尚未紀錄)'}")
+
+
+def _handle_update_last_checked(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+    try:
+        orchestrator.update_last_checked_title(args.channel, args.title)
+    except KeyError:
+        raise SystemExit(f"找不到頻道: {args.channel}") from None
+    print(f"成功更新 {args.channel} 的最後確認影片為: '{args.title}'")
 
 
 def _resolve_project_path(project_root: Path, target: str) -> Path:

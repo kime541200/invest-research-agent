@@ -23,8 +23,6 @@
 ├── pyproject.toml
 ├── resources.example.yaml
 ├── resources.yaml
-├── scripts/
-│   └── load_scripts.py
 ├── src/
 │   └── info_collector/
 └── tests/
@@ -77,6 +75,42 @@ source .venv/bin/activate
 python -m info_collector list-tags
 ```
 
+列出所有頻道：
+
+```bash
+source .venv/bin/activate
+python -m info_collector list-channels
+```
+
+只列出 `always_watch` 頻道：
+
+```bash
+source .venv/bin/activate
+python -m info_collector list-channels --always-watch
+```
+
+查詢某個頻道的 tags：
+
+```bash
+source .venv/bin/activate
+python -m info_collector get-channel-tags --channel inside6202
+```
+
+依 tags 查詢頻道：
+
+```bash
+source .venv/bin/activate
+python -m info_collector get-channels-by-tags --tags AI 科技
+```
+
+查看或更新最後確認影片：
+
+```bash
+source .venv/bin/activate
+python -m info_collector get-last-checked --channel inside6202
+python -m info_collector update-last-checked --channel inside6202 --title "新影片標題"
+```
+
 根據主題先看推薦頻道：
 
 ```bash
@@ -103,15 +137,6 @@ python -m info_collector collect-from-topic \
   --topic "美股與資產配置" \
   --dry-run
 ```
-
-## 舊腳本相容性
-
-`scripts/load_scripts.py` 仍可使用，並已改成新的 `state_store` 相容層，適合做：
-
-- 查 tags
-- 查頻道
-- 查 `last_checked_video_title`
-- 手動更新 `last_checked_video_title`
 
 ## 測試
 
