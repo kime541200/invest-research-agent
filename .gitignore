@@ -16,8 +16,18 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.cache/
 .venv/
 venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
 
 # node modules
 node_modules/

@@ -1,10 +1,42 @@
 yt_channels:
   Gooaye:
     url: https://www.youtube.com/@Gooaye
-    last_checked_video_title: ""
-    tags: ["美股", "台股", "ETF", "投資", "理財"]
+    last_checked_video_title: EP650 | 🦄
+    channel_id: ""
+    alias:
+      - 股癌
+      - 謝孟恭
+      - 癌大
+    tags:
+      - 美股
+      - 台股
+      - ETF
+      - 投資
+      - 理財
+    topic_keywords:
+      - 總經
+      - 資產配置
+      - 市場情緒
+    description: 聚焦投資市場、產業觀察與資產配置的長談節目。
+    priority: 5
+    always_watch: true
   inside6202:
     url: https://www.youtube.com/@inside6202
     last_checked_video_title: ""
-    tags: ["科技", "AI", "商業", "創新"]
+    channel_id: ""
+    alias:
+      - Fox
+      - Inside
+      - 塞掐 Side Chat
+    tags:
+      - 科技
+      - 商業
+      - 創新
+      - AI
+    topic_keywords:
+      - 新創
+      - SaaS
+      - 產品策略
+    description: 科技、AI、創業與商業模式的訪談與討論。
+    priority: 4
     always_watch: false
