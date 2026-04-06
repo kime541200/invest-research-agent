@@ -1,0 +1,18 @@
+{
+  "context": {
+    "fileName": ["./AGENTS.md"]
+  },
+  "mcpServers": {
+    "yt-mcp-server": {
+      "url": "http://localhost:8088/mcp"
+    }
+  },
+  "mcp": {
+    "allowed": ["yt-mcp-server"],
+    "excluded": []
+  },
+  "skills": {
+    "enable": ["mcp-server-tester"],
+    "disable": []
+  }
+}

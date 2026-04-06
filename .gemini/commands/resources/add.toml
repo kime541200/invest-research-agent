@@ -1,0 +1,39 @@
+description = "新增 Youtube 頻道到 resources.yaml，並自動分析近期影片與建立標籤"
+
+prompt = """
+# 任務：新增來源頻道到資源配置 (resources.yaml)
+
+使用者輸入了一組新的頻道連結或資訊：
+`<channel_info>`
+{{args}}
+`</channel_info>`
+
+請身為一位資深的 AI 助手，運用你的工具鍊完成以下工作流程：
+
+## 1. 獲悉頻道資訊與近期影片
+使用你的 MCP 工具（例如 `yt-mcp-server` 當中的搜尋或獲取頻道最新影片功能），取得這個頻道的最新 5 支左右的影片標題。
+
+## 2. 分析影片並歸納標籤
+根據你獲取到的近期影片標題與資訊，分析出這個頻道的核心主題，提煉出 3 到 5 個精準的 `tags`（如：["美股", "財經", "科技", "商業"] 等）。
+
+## 3. 生成設定檔資料節點
+準備寫入 `resources.yaml` 的資料。節點名稱請使用頻道的 ID (即 @ 之後的那串字或頻道英文縮寫)。
+結構如下：
+```yaml
+  <ChannelId>:
+    url: <頻道首頁連結>
+    last_checked_video_title: ""
+    tags: ["標籤1", "標籤2", ...]
+    always_watch: false
+```
+請留意不要破壞原本檔案內部的縮排（預設下 `yt_channels` 的子節點縮排通常是 2 空格）。
+
+## 4. 更新 resources.yaml
+使用 `replace_file_content`、`multi_replace_file_content` 或是其他文件編輯工具，將上述資訊寫入專案根目錄的 `resources.yaml` 中的 `yt_channels` 欄位底下。
+
+## 5. 任務回報
+更新完畢後，請以簡潔的格式向使用者回報：
+- 新增的頻道名稱與 URL
+- 自動歸納出的 Tags 分別是什麼
+- 提醒使用者如果對於自動產生的 Tags 或 `always_watch` 有進一步調整需求，可以直接告訴你。
+"""

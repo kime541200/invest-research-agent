@@ -1,0 +1,3 @@
+[submodule "modules/yt-mcp-server"]
+	path = modules/yt-mcp-server
+	url = https://github.com/kime541200/yt-mcp-server.git

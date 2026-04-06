@@ -1,0 +1,10 @@
+yt_channels:
+  Gooaye:
+    url: https://www.youtube.com/@Gooaye
+    last_checked_video_title: ""
+    tags: ["美股", "台股", "ETF", "投資", "理財"]
+  inside6202:
+    url: https://www.youtube.com/@inside6202
+    last_checked_video_title: ""
+    tags: ["科技", "AI", "商業", "創新"]
+    always_watch: false

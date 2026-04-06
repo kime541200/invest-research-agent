@@ -1,0 +1,27 @@
+# OS
+.DS_Store
+
+# IDE
+.vscode
+.idea
+
+# env
+.env
+
+# configuration
+resources.yaml
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# node modules
+node_modules/
+
+# Agent Notes
+notes/*
+!notes/.gitkeep
