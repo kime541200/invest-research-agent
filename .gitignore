@@ -35,3 +35,7 @@ node_modules/
 # Agent Notes
 notes/*
 !notes/.gitkeep
+
+# OpenSpec development artifacts
+openspec/
+.gemini/skills/openspec-*/
