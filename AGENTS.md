@@ -8,6 +8,7 @@
 
 - **基礎規則**：首先閱讀 [RULES.md](./RULES.md) 確立基本行為規範。
 - **前置配置**：參考 [docs/pre-required.md](./docs/pre-required.md) 進行相關環境的配置與檢查（包含 MCP Server 架設狀態等確認）。
+- **MCP 設定文件選擇**：MCP 設定格式依 Agent/客戶端而異，請先查閱 `docs/mcp-config/` 下對應環境的說明；若無對應文件，先搜尋現有設定與既有配置，仍無法確認時再請用戶提供。若只是想直接驗證或從 shell 呼叫 MCP，可優先參考 `docs/mcp-config/mcporter.md`。
 - **Python 執行方式**：若要執行根專案 Python 指令，先使用 `source .venv/bin/activate` 啟動虛擬環境；若 `.venv` 尚未建立，使用 `uv venv` 與 `uv pip install -e ".[dev]"` 初始化。
 
 ## 2. 標準工作流程
@@ -16,10 +17,10 @@
 
 ### 步驟 2.1: 理解主題並做頻道路由
 
-- 優先使用新的 CLI 入口：
+- 請使用以下 CLI 入口：
   - `python -m info_collector route-topic --topic "[使用者主題]"`
 - 路由邏輯以 `resources.yaml` 中的 `tags`、`alias`、`topic_keywords` 為主，`description` 與 `priority` 為輔。
-- 若使用者給的是較明確的標籤需求，也可直接使用：
+- 若使用者給的是較明確的標籤需求，可直接使用：
   - `python -m info_collector list-tags`
   - `python -m info_collector get-channels-by-tags --tags [TAG...]`
 

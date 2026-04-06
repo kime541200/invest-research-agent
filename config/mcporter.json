@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "yt-mcp-server": {
+      "description": "Project-local YouTube MCP server",
+      "baseUrl": "http://localhost:8088/mcp"
+    }
+  },
+  "imports": [
+    "cursor",
+    "claude-code",
+    "claude-desktop",
+    "codex",
+    "windsurf",
+    "opencode",
+    "vscode"
+  ]
+}

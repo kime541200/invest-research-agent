@@ -1,38 +1,68 @@
 # 前置設定
 
-## 1. 啟動 YT MCP server
+這份文件只描述與 Agent 架構無關的共通前置條件。
 
-先查看 Youtube MCP server 是否已啟動，一般情況下會運行在本機的 8088 port。
-如果沒有啟動，請先把 `https://github.com/kime541200/yt-mcp-server.git` clone 下來，並根據該專案的指示進行配置，若有需要設定 Youtube API Key，請先協助用戶進行配置及設定（相關操作說明都放在 `yt-mcp-server` repo 中）。
+若需要設定 MCP 客戶端，請先依目前執行環境查閱 `docs/mcp-config/` 下對應文件：
 
-## 2. 確認 MCP server 正確運行
+- Cursor: `docs/mcp-config/cursor.md`
+- Gemini: `docs/mcp-config/gemini.md`
+- Claude: `docs/mcp-config/claude.md`
+- MCPorter: `docs/mcp-config/mcporter.md`
 
-請參考 mcp-server-tester 這個 Agent Skill 確認 MCP server 正常運行。
+若目前環境沒有對應文件，請先搜尋現有設定檔與既有配置；若仍無法確認，再請用戶提供或補充。
 
-> 為了避免每次都重新啟動 MCP server，請先確認 MCP server 是否已啟動，若已啟動則不需要再啟動。
->
-> 因為該 MCP server 中使用的函式庫可能會因為更新導致無法正常運行，若 mcp-server-tester 執行失敗，請先停止動作並協助用戶看看該 MCP server 是哪邊發生問題，只有在 MCP server 正常運行的情況下才能繼續往下執行。
+## 1. 確認子模組與專案檔案
 
-## 3. 檢查 MCP server 連線配置
+- 確認 repo 已完成 submodule 初始化。
+- 確認 `modules/yt-mcp-server/` 存在。
+- 確認專案根目錄存在 `resources.yaml`；若不存在，請參考 `resources.example.yaml` 協助建立。
 
-請檢查 [settings.json](.gemini/settings.json) 中的配置，確保 MCP server 有正確啟用：
+建議指令：
 
-```json
-{
-  "mcpServers": {
-    "yt-mcp-server": {
-      "url": "http://localhost:8088/mcp"
-    }
-  },
-  "mcp": {
-    "allowed": ["yt-mcp-server"],
-    "excluded": []
-  }
-}
+```bash
+git submodule update --init --recursive
 ```
 
-如果沒有正確配置，請先進行該配置，並要求用戶重新啟動對話。
+## 2. 確認 YT MCP server 所需設定
 
-## 4. 檢查來源資料清單
+- 確認 `modules/yt-mcp-server/.env` 存在。
+- 確認 `.env` 中至少有可用的 `YOUTUBE_API_KEY`，可以參考 `modules/yt-mcp-server/docs/how-to-get-yt-api-key.md` 協助用戶取的 Youtube API Key。
+- 若 `.env` 不存在，可參考 `modules/yt-mcp-server/.env.example` 建立。
 
-檢查當前目錄是否存在 `resources.yaml`，如果沒有，請參考 `resources.example.yaml` 並協助用戶建立一個新的 `resources.yaml`。
+## 3. 確認 YT MCP server 正常運行
+
+先查看 `yt-mcp-server` 是否已啟動，一般情況下會運行在本機 `8088` port：
+
+- HTTP MCP endpoint: `http://localhost:8088/mcp`
+
+為了避免每次都重新啟動，請先確認服務是否已運行；若已運行則不需要重啟。
+
+若需要重啟，優先使用 `modules/yt-mcp-server/` 內的啟動方式，例如：
+
+```bash
+docker compose up -d --build
+```
+
+或：
+
+```bash
+source .venv/bin/activate
+python -m yt_mcp_server
+```
+
+## 4. 驗證 MCP server 可用
+
+- 可使用 `mcp-server-tester` skill 驗證。
+- 也可用 MCP `initialize` handshake 或其他健康檢查方式確認 `http://localhost:8088/mcp` 可回應。
+
+如果 MCP server 驗證失敗，請先停止後續流程並協助排查 server 問題，確認恢復後再繼續。
+
+## 5. 回到正式執行入口
+
+完成以上檢查後，回到正式 CLI 入口執行主流程：
+
+```bash
+source .venv/bin/activate
+python -m info_collector route-topic --topic "[使用者主題]"
+python -m info_collector collect-from-topic --topic "[使用者主題]"
+```
