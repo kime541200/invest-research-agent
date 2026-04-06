@@ -55,9 +55,13 @@ def test_note_generator_writes_markdown_note(tmp_path: Path) -> None:
     assert note.path.exists()
     content = note.path.read_text(encoding="utf-8")
     assert "# AI 公司怎麼賺錢？" in content
-    assert "## 📝 核心總結" in content
-    assert "## 📚 逐字稿摘錄" in content
-    assert "重點聚焦在：今天先談 AI 公司常見的營收模式，接著會比較訂閱制與服務制的差異。 最後整理投資人應該追蹤的指標。" in content
-    assert "今天先談 AI 公司常見的營收模式，接著會比較訂閱制與服務制的差異。" in content
-    assert "**0:00**" in content
-    assert "**2:00**" in content
+    assert "- **字幕狀態：** 可用" in content
+    assert "- **字幕來源：** 原生字幕" in content
+    assert "- **字幕語言：** zh-TW" in content
+    assert "## 📚 完整逐字稿" in content
+    assert "## 📝 核心總結" not in content
+    assert "## 📌 重點摘要" not in content
+    assert "## 💡 行動建議 (Actionable Insights)" not in content
+    assert "## 📚 逐字稿摘錄" not in content
+    assert "- **0:00**：今天先談 AI 公司常見的營收模式，接著會比較訂閱制與服務制的差異。" in content
+    assert "- **2:00**：最後整理投資人應該追蹤的指標。" in content

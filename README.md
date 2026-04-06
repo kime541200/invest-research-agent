@@ -278,7 +278,7 @@ notes/YYYY-MM-DD/
 - `yt-mcp-server` 字幕抓取與結構化回傳
 - 可選的 STT provider 設定與健康檢查
 - 合併後字幕 `merged_transcript`
-- 筆記生成時優先使用合併後字幕
+- 筆記生成以 raw-first 為主，優先完整保存逐字稿內容
 - 以 `mcporter` 直接訪問 MCP server 的能力
 
 目前尚未完成或仍在後續階段的部分：
@@ -296,6 +296,13 @@ notes/YYYY-MM-DD/
 - 預設 API base URL：`http://localhost:8089/v1`
 - `python -m invest_research_agent check-stt` 會檢查服務與指定模型是否就緒
 
+本地 GPU 方案：
+
+- `vllm-qwen3-asr`
+- 部署資產位於 `infra/stt/vllm-qwen3-asr/`
+- 預設 API base URL：`http://localhost:8090/v1`
+- 適合在有 NVIDIA GPU 的主機上用 Docker Compose 啟動 `Qwen/Qwen3-ASR-1.7B`
+
 雲端 provider 方向：
 
 - OpenAI Whisper API
@@ -310,11 +317,34 @@ STT_MODEL=Systran/faster-whisper-small
 STT_API_KEY=
 STT_TIMEOUT=300
 STT_LANGUAGE=zh
+STT_MAX_UPLOAD_MB=24
+STT_TARGET_CHUNK_MB=8
+STT_TRANSCODE_BITRATE=32k
+STT_TRANSCODE_SAMPLE_RATE=16000
+STT_SEGMENT_SECONDS=1800
 AUDIO_CACHE_POLICY=ttl
 AUDIO_CACHE_TTL_DAYS=7
 ```
 
+若要切到本地 GPU 的 `vllm-qwen3-asr`，可改成：
+
+```env
+STT_PROVIDER=vllm-qwen3-asr
+STT_BASE_URL=http://localhost:8090/v1
+STT_MODEL=Qwen/Qwen3-ASR-1.7B
+STT_API_KEY=EMPTY
+STT_TIMEOUT=300
+STT_LANGUAGE=zh
+STT_MAX_UPLOAD_MB=24
+STT_TARGET_CHUNK_MB=8
+STT_TRANSCODE_BITRATE=24k
+STT_TRANSCODE_SAMPLE_RATE=16000
+STT_SEGMENT_SECONDS=900
+```
+
 音訊快取預設採 `ttl` 策略，會在每次執行收集流程時，自動清掉超過 `7` 天的舊音檔。若想改成立即刪除，也可把 `AUDIO_CACHE_POLICY` 改成 `delete-on-success`。
+
+目前所有 STT provider 都共用同一套前處理流程：先依設定用專案內的 `ffmpeg` 做轉碼，必要時再切成較小音檔後送進 STT。這個 `ffmpeg` 由 Python 依賴 `imageio-ffmpeg` 提供，不需要另外做系統全域安裝。
 
 常見設定範例：
 

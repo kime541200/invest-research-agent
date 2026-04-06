@@ -211,6 +211,7 @@ class CollectorOrchestrator:
                 video_id=transcript.video_id,
                 language=transcript.language,
                 status="unavailable",
+                source=getattr(transcript, "source", "native"),
                 reason=f"{reason}; stt_fallback_failed: {exc}",
                 full_text=transcript.full_text,
                 merged_full_text=transcript.merged_full_text,

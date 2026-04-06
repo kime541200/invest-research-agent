@@ -62,6 +62,7 @@ python -m yt_mcp_server
 若目前需求包含「無字幕影片也要嘗試轉字幕」，請先確認使用者希望採用哪一種 STT provider：
 
 - 本地：以 `infra/stt/speaches/` 部署 `speaches`
+- 本地 GPU：以 `infra/stt/vllm-qwen3-asr/` 部署 `vLLM + Qwen3-ASR`
 - 雲端：例如 OpenAI Whisper API、Groq Whisper API
 
 若使用者尚未決定，不要直接假設，請先詢問是要走本地還是雲端。
@@ -77,6 +78,11 @@ STT_MODEL=Systran/faster-whisper-small
 STT_API_KEY=
 STT_TIMEOUT=300
 STT_LANGUAGE=zh
+STT_MAX_UPLOAD_MB=24
+STT_TARGET_CHUNK_MB=8
+STT_TRANSCODE_BITRATE=24k
+STT_TRANSCODE_SAMPLE_RATE=16000
+STT_SEGMENT_SECONDS=900
 AUDIO_CACHE_POLICY=ttl
 AUDIO_CACHE_TTL_DAYS=7
 ```
@@ -115,6 +121,22 @@ curl -X POST "http://localhost:8089/v1/models/Systran%2Ffaster-whisper-small"
 - 確認 `.env` 中至少有可用的 `STT_BASE_URL`、`STT_MODEL`、`STT_API_KEY`
 - 若使用 Groq，`STT_BASE_URL` 可設為 `https://api.groq.com/openai/v1`
 - 若使用 OpenAI，請使用對應 Whisper transcription endpoint 的 API base URL
+
+### 6.3 本地 GPU `vllm-qwen3-asr`
+
+- 部署入口：`infra/stt/vllm-qwen3-asr/compose.yaml`
+- health endpoint：`http://localhost:8090/health`
+- API base URL：`http://localhost:8090/v1`
+- 需要可用 NVIDIA GPU 與 Docker + NVIDIA Container Toolkit
+
+若本地 GPU 服務尚未啟動，可參考：
+
+```bash
+cp infra/stt/vllm-qwen3-asr/.env.example infra/stt/vllm-qwen3-asr/.env
+docker compose -f infra/stt/vllm-qwen3-asr/compose.yaml --env-file infra/stt/vllm-qwen3-asr/.env up -d --build
+```
+
+若將服務部署在另一台 GPU 主機，只要把根專案 `.env` 的 `STT_BASE_URL` 改成對應主機的 `/v1` endpoint 即可。
 
 若 STT provider 驗證失敗，請先停止後續流程並協助排查，確認恢復後再繼續。
 

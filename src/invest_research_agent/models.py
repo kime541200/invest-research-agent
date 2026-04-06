@@ -61,6 +61,7 @@ class TranscriptBundle:
     video_id: str
     language: str | None
     status: str = "ok"
+    source: str = "native"
     reason: str | None = None
     full_text: str = ""
     merged_full_text: str = ""

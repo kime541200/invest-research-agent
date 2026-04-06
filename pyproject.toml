@@ -9,6 +9,7 @@ dependencies = [
     "PyYAML>=6.0",
     "python-dotenv>=1.0.0",
     "yt-dlp",
+    "imageio-ffmpeg>=0.6.0",
 ]
 
 [project.optional-dependencies]

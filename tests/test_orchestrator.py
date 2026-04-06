@@ -90,6 +90,7 @@ class FakeSttClient(SttClient):
             video_id=video_id,
             language="zh",
             status="ok",
+            source="stt",
             full_text="這是 STT fallback 逐字稿。",
             merged_full_text="這是 STT fallback 逐字稿。",
             transcript=[
@@ -179,4 +180,5 @@ channel_state:
 
     note_content = result.channel_results[0].note_paths[0].read_text(encoding="utf-8")
     assert "STT fallback 逐字稿" in note_content
+    assert "- **字幕來源：** STT fallback" in note_content
     assert fake_downloader.success_paths == [fake_audio_path]
