@@ -1,0 +1,133 @@
+from __future__ import annotations
+
+from dataclasses import asdict
+from pathlib import Path
+from typing import Any
+
+from info_collector.dedupe import select_new_videos
+from info_collector.models import ChannelCollectionResult, CollectionResult
+from info_collector.note_generator import MarkdownNoteGenerator, NoteContext
+from info_collector.state_store import ResourceStateStore
+from info_collector.topic_router import TopicRouter
+from info_collector.video_fetcher import YouTubeMcpGateway
+
+
+class CollectorOrchestrator:
+    def __init__(
+        self,
+        state_store: ResourceStateStore,
+        topic_router: TopicRouter,
+        video_gateway: YouTubeMcpGateway,
+        note_generator: MarkdownNoteGenerator,
+        notes_root: Path | str,
+    ) -> None:
+        self.state_store = state_store
+        self.topic_router = topic_router
+        self.video_gateway = video_gateway
+        self.note_generator = note_generator
+        self.notes_root = Path(notes_root)
+
+    def collect_from_topic(
+        self,
+        topic: str,
+        max_channels: int = 3,
+        max_videos_per_channel: int = 5,
+        initial_video_limit: int = 1,
+        transcript_language: str | None = None,
+        write_notes: bool = True,
+        update_state: bool = True,
+    ) -> CollectionResult:
+        channels = self.state_store.get_channels()
+        routed_channels = self.topic_router.route(topic, channels, limit=max_channels)
+        channel_results: list[ChannelCollectionResult] = []
+
+        for routed_channel in routed_channels:
+            channel = routed_channel.channel
+            try:
+                resolved_channel_id, videos = self.video_gateway.list_recent_videos(
+                    channel=channel,
+                    max_results=max_videos_per_channel,
+                )
+                new_videos = select_new_videos(
+                    channel=channel,
+                    videos=videos,
+                    initial_video_limit=initial_video_limit,
+                )
+                note_paths = []
+
+                if write_notes:
+                    for video in new_videos:
+                        transcript = self.video_gateway.get_transcript(
+                            video.video_id,
+                            language=transcript_language,
+                        )
+                        note = self.note_generator.write_note(
+                            NoteContext(
+                                topic=topic,
+                                channel=channel,
+                                video=video,
+                                transcript=transcript,
+                            ),
+                            output_root=self.notes_root,
+                        )
+                        note_paths.append(note.path)
+
+                if update_state and new_videos:
+                    self.state_store.update_last_checked_title(channel.name, new_videos[0].title)
+
+                status = "processed" if new_videos else "skipped"
+                message = "已處理新影片" if new_videos else "沒有新影片"
+                channel_results.append(
+                    ChannelCollectionResult(
+                        channel=channel,
+                        resolved_channel_id=resolved_channel_id,
+                        route_score=routed_channel.score,
+                        matched_terms=routed_channel.matched_terms,
+                        fetched_videos=videos,
+                        new_videos=new_videos,
+                        note_paths=note_paths,
+                        status=status,
+                        message=message,
+                    )
+                )
+            except Exception as exc:
+                channel_results.append(
+                    ChannelCollectionResult(
+                        channel=channel,
+                        resolved_channel_id=None,
+                        route_score=routed_channel.score,
+                        matched_terms=routed_channel.matched_terms,
+                        status="error",
+                        message=str(exc),
+                    )
+                )
+
+        return CollectionResult(
+            topic=topic,
+            routed_channels=routed_channels,
+            channel_results=channel_results,
+            output_dir=self.notes_root,
+        )
+
+    def route_topic(self, topic: str, limit: int = 5) -> list[dict[str, Any]]:
+        channels = self.state_store.get_channels()
+        routed_channels = self.topic_router.route(topic, channels, limit=limit)
+        return [
+            {
+                "channel": item.channel.name,
+                "score": item.score,
+                "matched_terms": item.matched_terms,
+                "reason": item.reason,
+            }
+            for item in routed_channels
+        ]
+
+    def list_tags(self) -> list[str]:
+        return self.state_store.get_all_tags()
+
+    def to_dict(self, result: CollectionResult) -> dict[str, Any]:
+        data = asdict(result)
+        for channel_result in data["channel_results"]:
+            channel_result["note_paths"] = [str(path) for path in channel_result["note_paths"]]
+        data["output_dir"] = str(result.output_dir)
+        return data

@@ -1,4 +1,0 @@
-interface:
-  display_name: "MCP Server Tester"
-  short_description: "Test MCP server tools & health"
-  default_prompt: "Use $mcp-server-tester to verify that the MCP server at http://localhost:PORT/mcp is running correctly."

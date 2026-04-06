@@ -2,38 +2,47 @@
 
 ## 核心任務
 
-作為一個專業的投資理財 AI Agent，你需要協助用戶從指定的 Youtube 頻道獲取影片資訊，進行深入重點分析，並將其整理為具有高易讀性的結構化筆記。
+作為一個專業的投資理財 AI Agent，你需要協助用戶從指定的 Youtube 頻道獲取影片資訊，進行整理與分析，並將結果輸出成高易讀性的 Markdown 筆記。
 
 ## 1. 必讀規則與前置作業
 
 - **基礎規則**：首先閱讀 [RULES.md](./RULES.md) 確立基本行為規範。
 - **前置配置**：參考 [docs/pre-required.md](./docs/pre-required.md) 進行相關環境的配置與檢查（包含 MCP Server 架設狀態等確認）。
+- **Python 執行方式**：若要執行根專案 Python 指令，先使用 `source .venv/bin/activate` 啟動虛擬環境；若 `.venv` 尚未建立，使用 `uv venv` 與 `uv pip install -e ".[dev]"` 初始化。
 
 ## 2. 標準工作流程
 
 每次開啟處理任務或新對話時，請根據以下流程逐步執行：
 
-### 步驟 2.1: 取得目標標籤與頻道設定
+### 步驟 2.1: 理解主題並做頻道路由
 
-- 執行指令：使用 `python scripts/load_scripts.py --get-all-tags` 來取得所有定義的內容標籤。
-- **互動決策**：主動詢問用戶本次想關注哪些標籤（或者用戶已經提前往指令裡帶入標籤）。
+- 優先使用新的 CLI 入口：
+  - `python -m info_collector route-topic --topic "[使用者主題]"`
+- 路由邏輯以 `resources.yaml` 中的 `tags`、`alias`、`topic_keywords` 為主，`description` 與 `priority` 為輔。
+- 若使用者給的是較明確的標籤需求，也可用舊指令檢查：
+  - `python scripts/load_scripts.py --get-all-tags`
+  - `python scripts/load_scripts.py --get-channels-by-tags [TAG...]`
 
-### 步驟 2.2: 獲取影片並驗證處理狀態
+### 步驟 2.2: 執行主題收集流程
 
-- 執行指令：使用 `python scripts/load_scripts.py --get-channels-by-tags [所選標籤]` 獲取該標籤下的頻道列表。
-- **確認選看頻道**：
-  - 根據腳本輸出的結果，`[必看頻道 - always_watch: true]` 屬於強制處理，請**自動且直接**執行。
-  - 對於分類在 `[選看頻道 - always_watch: false]` 下的頻道，請列出清單並**主動詢問用戶**本次是否需要觀看。等待確認後，再將用戶同意的選看頻道加入處理清單。
-- **檢索影片**：透過 Youtube MCP Server 搜尋清單中頻道的最新一支影片。
-- **去重機制**：使用 `python scripts/load_scripts.py --get-last-checked-title [頻道名稱]` 確認影片標題是否與上次檢查的紀錄相同。
-  - 若相同 ➔ 跳過該影片。
-  - 若不同 ➔ 進入下一步。
+- 優先使用：
+  - `python -m info_collector collect-from-topic --topic "[使用者主題]"`
+- 這個流程會自動完成：
+  - 根據主題推薦候選頻道
+  - 透過 `yt-mcp-server` 解析 `channel_id`
+  - 取得每個頻道最近影片
+  - 用 `last_checked_video_title` 做去重
+  - 抓取字幕
+  - 產出 Markdown 筆記到 `notes/YYYY-MM-DD/`
+  - 更新 `resources.yaml` 的 `last_checked_video_title`
+- 若只想預覽不落地，請加上 `--dry-run`。
 
-### 步驟 2.3: 獲取字幕與結構化內容梳理
+### 步驟 2.3: 例外與互動決策
 
-- **資料獲取**：使用 Youtube MCP Server 取得影片詳細內容與重點字幕。
-- **資料夾建立**：以當日日期為基準，在 `notes` 目錄下建立子資料夾（格式例如：`notes/YYYY-MM-DD/`）。
-- **生成筆記**：針對未處理過的影片，產出統一格式的 Markdown 分析文件，檔案命名建議：`[頻道名稱]_影片標題.md`。
+- 若主題命中過多頻道，優先回傳最相關的前幾個候選，並說明匹配理由。
+- 若沒有新影片，應明確回覆「沒有新影片」，而不是重複整理舊內容。
+- 若頻道第一次被處理，允許只處理最新 1 支影片，避免首次回填過量資料。
+- 若 `yt-mcp-server` 連線失敗，先排查 MCP server 狀態，確認恢復後再繼續。
 
 ---
 
@@ -63,5 +72,13 @@
 
 ## 4. 結束處理
 
-- 處理完成後，請執行以下指令將最新處理的影片標題更新至 `resources.yaml` 中的 `last_checked_video_title` 欄位（以避免後續重複讀取）：
-  `python scripts/load_scripts.py --update-last-checked-title [頻道名稱] "[影片標題]"`
+- 若使用 `python -m info_collector collect-from-topic ...`，狀態會自動寫回 `resources.yaml`。
+- 若需要手動修正狀態，可使用：
+  - `python scripts/load_scripts.py --get-last-checked-title [頻道名稱]`
+  - `python scripts/load_scripts.py --update-last-checked-title [頻道名稱] "[影片標題]"`
+
+## 5. NotebookLM 目前定位
+
+- `NotebookLM` 目前不是核心 pipeline 的必要依賴。
+- 第一階段先把 `主題 -> 頻道 -> 最新影片 -> 筆記` 做穩。
+- 若使用者後續想做更強的 grounding，可再透過 `modules/notebooklm-skill` 擴充，但不要把目前主流程綁死在 NotebookLM ingestion。
