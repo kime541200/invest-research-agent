@@ -4,14 +4,14 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from info_collector.audio_downloader import AudioDownloader
-from info_collector.dedupe import select_new_videos
-from info_collector.models import ChannelCollectionResult, CollectionResult
-from info_collector.note_generator import MarkdownNoteGenerator, NoteContext
-from info_collector.state_store import ResourceStateStore
-from info_collector.stt import SttClient
-from info_collector.topic_router import TopicRouter
-from info_collector.video_fetcher import YouTubeMcpGateway
+from invest_research_agent.audio_downloader import AudioDownloader
+from invest_research_agent.dedupe import select_new_videos
+from invest_research_agent.models import ChannelCollectionResult, CollectionResult
+from invest_research_agent.note_generator import MarkdownNoteGenerator, NoteContext
+from invest_research_agent.state_store import ResourceStateStore
+from invest_research_agent.stt import SttClient
+from invest_research_agent.topic_router import TopicRouter
+from invest_research_agent.video_fetcher import YouTubeMcpGateway
 
 
 class CollectorOrchestrator:

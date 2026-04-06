@@ -4,9 +4,9 @@ import os
 from pathlib import Path
 import time
 
-import info_collector.audio_downloader as audio_downloader_module
-from info_collector.audio_downloader import AudioCacheSettings, AudioDownloader, load_audio_cache_settings
-from info_collector.models import VideoMetadata
+import invest_research_agent.audio_downloader as audio_downloader_module
+from invest_research_agent.audio_downloader import AudioCacheSettings, AudioDownloader, load_audio_cache_settings
+from invest_research_agent.models import VideoMetadata
 
 
 def test_audio_downloader_reuses_cached_file(tmp_path: Path) -> None:

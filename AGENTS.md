@@ -18,17 +18,17 @@
 ### 步驟 2.1: 理解主題並做頻道路由
 
 - 請使用以下 CLI 入口：
-  - `python -m info_collector route-topic --topic "[使用者主題]"`
+  - `python -m invest_research_agent route-topic --topic "[使用者主題]"`
 - 路由邏輯以 `resources.yaml` 的 `yt_channels` 區塊為主；其中 `tags`、`alias`、`topic_keywords` 為主要訊號，`description`、`watch_tier` 與 `priority` 為輔。
 - `yt_channels` 用來放人工維護的靜態頻道設定；`channel_state` 用來放程式更新的執行狀態，例如 `last_checked_video_title` 與 `channel_id`。
 - 若使用者給的是較明確的標籤需求，可直接使用：
-  - `python -m info_collector list-tags`
-  - `python -m info_collector get-channels-by-tags --tags [TAG...]`
+  - `python -m invest_research_agent list-tags`
+  - `python -m invest_research_agent get-channels-by-tags --tags [TAG...]`
 
 ### 步驟 2.2: 執行主題收集流程
 
 - 優先使用：
-  - `python -m info_collector collect-from-topic --topic "[使用者主題]"`
+  - `python -m invest_research_agent collect-from-topic --topic "[使用者主題]"`
 - 這個流程會自動完成：
   - 根據主題推薦候選頻道
   - 透過 `yt-mcp-server` 解析 `channel_id`
@@ -82,13 +82,13 @@
 
 ## 4. 結束處理
 
-- 若使用 `python -m info_collector collect-from-topic ...`，狀態會自動寫回 `resources.yaml` 的 `channel_state` 區塊。
+- 若使用 `python -m invest_research_agent collect-from-topic ...`，狀態會自動寫回 `resources.yaml` 的 `channel_state` 區塊。
 - 若需要手動修正狀態，可使用：
-  - `python -m info_collector get-last-checked --channel [頻道名稱]`
-  - `python -m info_collector update-last-checked --channel [頻道名稱] --title "[影片標題]"`
+  - `python -m invest_research_agent get-last-checked --channel [頻道名稱]`
+  - `python -m invest_research_agent update-last-checked --channel [頻道名稱] --title "[影片標題]"`
 - 若需要檢查追蹤層級，可使用：
-  - `python -m info_collector list-channels --watch-tier core`
-  - `python -m info_collector list-channels --watch-tier normal`
+  - `python -m invest_research_agent list-channels --watch-tier core`
+  - `python -m invest_research_agent list-channels --watch-tier normal`
 
 ## 5. 目前產品邊界
 

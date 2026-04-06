@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from info_collector.models import ChannelConfig, VideoMetadata
+from invest_research_agent.models import ChannelConfig, VideoMetadata
 
 
 def select_new_videos(

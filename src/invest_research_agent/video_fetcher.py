@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlparse
 
-from info_collector.mcp_client import McpHttpClient
-from info_collector.models import ChannelConfig, TranscriptBundle, TranscriptSegment, VideoMetadata
+from invest_research_agent.mcp_client import McpHttpClient
+from invest_research_agent.models import ChannelConfig, TranscriptBundle, TranscriptSegment, VideoMetadata
 
 
 class YouTubeMcpGateway:

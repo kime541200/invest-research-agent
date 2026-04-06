@@ -4,7 +4,7 @@ from pathlib import Path
 
 import httpx
 
-from info_collector.stt import SttClient, SttSettings, check_stt_provider, load_stt_settings
+from invest_research_agent.stt import SttClient, SttSettings, check_stt_provider, load_stt_settings
 
 
 class _FakeGetResponse:

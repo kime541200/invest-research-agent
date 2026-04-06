@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from info_collector.models import ChannelConfig
-from info_collector.topic_router import TopicRouter
+from invest_research_agent.models import ChannelConfig
+from invest_research_agent.topic_router import TopicRouter
 
 
 def test_topic_router_prefers_tag_and_keyword_matches() -> None:

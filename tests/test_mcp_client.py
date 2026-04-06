@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from urllib import request
 
-from info_collector.mcp_client import McpHttpClient
+from invest_research_agent.mcp_client import McpHttpClient
 
 
 class _FakeResponse:

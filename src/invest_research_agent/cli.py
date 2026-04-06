@@ -4,14 +4,14 @@ import argparse
 import json
 from pathlib import Path
 
-from info_collector.audio_downloader import AudioDownloader, load_audio_cache_settings
-from info_collector.mcp_client import McpHttpClient
-from info_collector.note_generator import MarkdownNoteGenerator
-from info_collector.orchestrator import CollectorOrchestrator
-from info_collector.state_store import ResourceStateStore
-from info_collector.stt import SttClient, check_stt_provider, load_stt_settings
-from info_collector.topic_router import TopicRouter
-from info_collector.video_fetcher import YouTubeMcpGateway
+from invest_research_agent.audio_downloader import AudioDownloader, load_audio_cache_settings
+from invest_research_agent.mcp_client import McpHttpClient
+from invest_research_agent.note_generator import MarkdownNoteGenerator
+from invest_research_agent.orchestrator import CollectorOrchestrator
+from invest_research_agent.state_store import ResourceStateStore
+from invest_research_agent.stt import SttClient, check_stt_provider, load_stt_settings
+from invest_research_agent.topic_router import TopicRouter
+from invest_research_agent.video_fetcher import YouTubeMcpGateway
 
 
 def main() -> None:
@@ -26,7 +26,7 @@ def main() -> None:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Topic-driven YouTube info collector")
+    parser = argparse.ArgumentParser(description="Topic-driven investment research agent")
     parser.add_argument(
         "--resources-file",
         default="resources.yaml",
@@ -50,7 +50,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--cache-dir",
-        default=".cache/info-collector",
+        default=".cache/invest-research-agent",
         help="快取輸出目錄（音訊下載等）",
     )
 

@@ -8,7 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from yt_dlp import YoutubeDL
 
-from info_collector.models import VideoMetadata
+from invest_research_agent.models import VideoMetadata
 
 
 @dataclass(frozen=True)

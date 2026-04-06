@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from info_collector.models import ChannelConfig, TranscriptBundle, TranscriptSegment, VideoMetadata
-from info_collector.note_generator import MarkdownNoteGenerator, NoteContext
+from invest_research_agent.models import ChannelConfig, TranscriptBundle, TranscriptSegment, VideoMetadata
+from invest_research_agent.note_generator import MarkdownNoteGenerator, NoteContext
 
 
 def test_note_generator_writes_markdown_note(tmp_path: Path) -> None:

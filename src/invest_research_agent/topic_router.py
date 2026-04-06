@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
-from info_collector.models import ChannelConfig, RoutedChannel
-from info_collector.state_store import WATCH_TIER_ORDER
+from invest_research_agent.models import ChannelConfig, RoutedChannel
+from invest_research_agent.state_store import WATCH_TIER_ORDER
 
 
 class TopicRouter:

@@ -1,4 +1,4 @@
-# info-collector
+# invest-research-agent
 
 這個專案用來打造一個以主題驅動的 YouTube 資訊蒐集 Agent。
 
@@ -19,14 +19,14 @@
 2. 設定並啟動 `yt-mcp-server`
 3. 準備 `resources.yaml`
 4. 安裝根專案
-5. 用 `python -m info_collector ...` 執行正式流程
+5. 用 `python -m invest_research_agent ...` 執行正式流程
 
 ```bash
 git submodule update --init --recursive
 uv venv
 source .venv/bin/activate
 uv pip install -e ".[dev]"
-python -m info_collector route-topic --topic "AI 新創與科技商業趨勢"
+python -m invest_research_agent route-topic --topic "AI 新創與科技商業趨勢"
 ```
 
 在開始前，建議先看：
@@ -57,7 +57,7 @@ python -m info_collector route-topic --topic "AI 新創與科技商業趨勢"
 ├── resources.example.yaml
 ├── resources.yaml
 ├── src/
-│   └── info_collector/
+│   └── invest_research_agent/
 └── tests/
 ```
 
@@ -134,14 +134,14 @@ npx mcporter call yt-mcp-server.transcripts_getTranscript video_id=7U1qyLstvBU -
 根專案現在唯一正式入口是：
 
 ```bash
-python -m info_collector ...
+python -m invest_research_agent ...
 ```
 
 若要先檢查 STT provider 是否可用：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector check-stt
+python -m invest_research_agent check-stt
 ```
 
 常用命令如下。
@@ -150,57 +150,57 @@ python -m info_collector check-stt
 
 ```bash
 source .venv/bin/activate
-python -m info_collector list-tags
+python -m invest_research_agent list-tags
 ```
 
 列出所有頻道：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector list-channels
+python -m invest_research_agent list-channels
 ```
 
 只列出 `core` 頻道：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector list-channels --watch-tier core
+python -m invest_research_agent list-channels --watch-tier core
 ```
 
 查詢某個頻道的 tags：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector get-channel-tags --channel inside6202
+python -m invest_research_agent get-channel-tags --channel inside6202
 ```
 
 依 tags 查詢頻道：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector get-channels-by-tags --tags AI 科技
+python -m invest_research_agent get-channels-by-tags --tags AI 科技
 ```
 
 查看或更新最後確認影片：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector get-last-checked --channel inside6202
-python -m info_collector update-last-checked --channel inside6202 --title "新影片標題"
+python -m invest_research_agent get-last-checked --channel inside6202
+python -m invest_research_agent update-last-checked --channel inside6202 --title "新影片標題"
 ```
 
 根據主題先看推薦頻道：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector route-topic --topic "AI 新創與科技商業趨勢"
+python -m invest_research_agent route-topic --topic "AI 新創與科技商業趨勢"
 ```
 
 實際執行收集流程：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector collect-from-topic \
+python -m invest_research_agent collect-from-topic \
   --topic "AI 新創與科技商業趨勢" \
   --max-channels 3 \
   --max-videos-per-channel 5 \
@@ -213,7 +213,7 @@ python -m info_collector collect-from-topic \
 
 ```bash
 source .venv/bin/activate
-python -m info_collector collect-from-topic \
+python -m invest_research_agent collect-from-topic \
   --topic "美股與資產配置" \
   --dry-run
 ```
@@ -226,21 +226,21 @@ python -m info_collector collect-from-topic \
 
 ```bash
 source .venv/bin/activate
-python -m info_collector route-topic --topic "AI 新創與科技商業趨勢"
+python -m invest_research_agent route-topic --topic "AI 新創與科技商業趨勢"
 ```
 
 2. 如果想先確認候選頻道，也可以直接查 tags：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector get-channels-by-tags --tags AI 科技 商業
+python -m invest_research_agent get-channels-by-tags --tags AI 科技 商業
 ```
 
 3. 先用 dry-run 驗證整條流程是否能抓到新影片：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector collect-from-topic \
+python -m invest_research_agent collect-from-topic \
   --topic "AI 新創與科技商業趨勢" \
   --max-channels 2 \
   --dry-run
@@ -250,7 +250,7 @@ python -m info_collector collect-from-topic \
 
 ```bash
 source .venv/bin/activate
-python -m info_collector collect-from-topic \
+python -m invest_research_agent collect-from-topic \
   --topic "AI 新創與科技商業趨勢" \
   --max-channels 2 \
   --max-videos-per-channel 3 \
@@ -261,7 +261,7 @@ python -m info_collector collect-from-topic \
 
 ```bash
 source .venv/bin/activate
-python -m info_collector get-last-checked --channel inside6202
+python -m invest_research_agent get-last-checked --channel inside6202
 ```
 
 完成後，新的 Markdown 筆記會寫到：
@@ -294,7 +294,7 @@ notes/YYYY-MM-DD/
 - `speaches`
 - 部署資產位於 `infra/stt/speaches/`
 - 預設 API base URL：`http://localhost:8089/v1`
-- `python -m info_collector check-stt` 會檢查服務與指定模型是否就緒
+- `python -m invest_research_agent check-stt` 會檢查服務與指定模型是否就緒
 
 雲端 provider 方向：
 

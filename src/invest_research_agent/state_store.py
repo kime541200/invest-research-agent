@@ -5,7 +5,7 @@ from typing import Any
 
 import yaml
 
-from info_collector.models import ChannelConfig, ChannelState, WatchTier
+from invest_research_agent.models import ChannelConfig, ChannelState, WatchTier
 
 WATCH_TIER_ORDER: dict[str, int] = {
     "core": 0,

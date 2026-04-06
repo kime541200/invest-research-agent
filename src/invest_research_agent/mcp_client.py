@@ -48,7 +48,7 @@ class McpHttpClient:
                     "protocolVersion": "2024-11-05",
                     "capabilities": {},
                     "clientInfo": {
-                        "name": "info-collector",
+                        "name": "invest-research-agent",
                         "version": "0.1.0",
                     },
                 },

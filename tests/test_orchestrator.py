@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from info_collector.audio_downloader import AudioDownloader
-from info_collector.models import TranscriptBundle, TranscriptSegment, VideoMetadata
-from info_collector.note_generator import MarkdownNoteGenerator
-from info_collector.orchestrator import CollectorOrchestrator
-from info_collector.state_store import ResourceStateStore
-from info_collector.stt import SttClient, SttSettings
-from info_collector.topic_router import TopicRouter
+from invest_research_agent.audio_downloader import AudioDownloader
+from invest_research_agent.models import TranscriptBundle, TranscriptSegment, VideoMetadata
+from invest_research_agent.note_generator import MarkdownNoteGenerator
+from invest_research_agent.orchestrator import CollectorOrchestrator
+from invest_research_agent.state_store import ResourceStateStore
+from invest_research_agent.stt import SttClient, SttSettings
+from invest_research_agent.topic_router import TopicRouter
 
 
 class FakeYouTubeGateway:

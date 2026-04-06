@@ -9,7 +9,7 @@ from urllib.parse import quote
 import httpx
 from dotenv import load_dotenv
 
-from info_collector.models import TranscriptBundle, TranscriptSegment
+from invest_research_agent.models import TranscriptBundle, TranscriptSegment
 
 
 @dataclass(frozen=True)

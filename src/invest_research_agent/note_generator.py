@@ -5,7 +5,7 @@ from datetime import date
 from pathlib import Path
 import re
 
-from info_collector.models import ChannelConfig, GeneratedNote, TranscriptBundle, VideoMetadata
+from invest_research_agent.models import ChannelConfig, GeneratedNote, TranscriptBundle, VideoMetadata
 
 
 @dataclass(frozen=True)

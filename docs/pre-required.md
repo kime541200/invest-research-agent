@@ -87,7 +87,7 @@ AUDIO_CACHE_TTL_DAYS=7
 
 ```bash
 source .venv/bin/activate
-python -m info_collector check-stt
+python -m invest_research_agent check-stt
 ```
 
 ### 6.1 本地 `speaches`
@@ -95,7 +95,7 @@ python -m info_collector check-stt
 - 部署入口：`infra/stt/speaches/compose.yaml`
 - health endpoint：`http://localhost:8089/health`
 - API base URL：`http://localhost:8089/v1`
-- `python -m info_collector check-stt` 會同時檢查服務是否可用，以及指定模型是否已就緒
+- `python -m invest_research_agent check-stt` 會同時檢查服務是否可用，以及指定模型是否已就緒
 
 若本地服務未啟動，可參考：
 
@@ -124,6 +124,6 @@ curl -X POST "http://localhost:8089/v1/models/Systran%2Ffaster-whisper-small"
 
 ```bash
 source .venv/bin/activate
-python -m info_collector route-topic --topic "[使用者主題]"
-python -m info_collector collect-from-topic --topic "[使用者主題]"
+python -m invest_research_agent route-topic --topic "[使用者主題]"
+python -m invest_research_agent collect-from-topic --topic "[使用者主題]"
 ```

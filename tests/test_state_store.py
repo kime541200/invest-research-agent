@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from info_collector.state_store import ResourceStateStore
+from invest_research_agent.state_store import ResourceStateStore
 
 
 def test_state_store_reads_optional_fields(tmp_path: Path) -> None:
