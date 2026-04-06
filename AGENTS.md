@@ -19,7 +19,8 @@
 
 - 請使用以下 CLI 入口：
   - `python -m info_collector route-topic --topic "[使用者主題]"`
-- 路由邏輯以 `resources.yaml` 中的 `tags`、`alias`、`topic_keywords` 為主，`description` 與 `priority` 為輔。
+- 路由邏輯以 `resources.yaml` 的 `yt_channels` 區塊為主；其中 `tags`、`alias`、`topic_keywords` 為主要訊號，`description`、`watch_tier` 與 `priority` 為輔。
+- `yt_channels` 用來放人工維護的靜態頻道設定；`channel_state` 用來放程式更新的執行狀態，例如 `last_checked_video_title` 與 `channel_id`。
 - 若使用者給的是較明確的標籤需求，可直接使用：
   - `python -m info_collector list-tags`
   - `python -m info_collector get-channels-by-tags --tags [TAG...]`
@@ -35,7 +36,7 @@
   - 用 `last_checked_video_title` 做去重
   - 優先抓取原生字幕，必要時再走音訊轉字幕 fallback
   - 產出 Markdown 筆記到 `notes/YYYY-MM-DD/`
-  - 更新 `resources.yaml` 的 `last_checked_video_title`
+  - 更新 `resources.yaml` 的 `channel_state.<channel_name>.last_checked_video_title`
 - 若只想預覽不落地，請加上 `--dry-run`。
 
 ### 步驟 2.3: 例外與互動決策
@@ -46,6 +47,12 @@
 - 若 `yt-mcp-server` 連線失敗，先排查 MCP server 狀態，確認恢復後再繼續。
 - 若要啟用無字幕影片 fallback，先確認使用者要走本地或雲端 STT，並完成對應 provider 的健康檢查。
 - 若使用音訊下載 fallback，預設沿用 `AUDIO_CACHE_POLICY=ttl` 與 `AUDIO_CACHE_TTL_DAYS=7`；只有在使用者明確要求節省空間或避免保留音檔時，再建議改成 `delete-on-success`。
+- 若需要調整頻道優先級，優先修改 `watch_tier`，而不是重新引入 `always_watch` 之類的布林欄位。
+- `watch_tier` 建議語意如下：
+  - `core`：核心必看，優先度最高
+  - `normal`：一般追蹤名單
+  - `optional`：補充來源
+  - `paused`：保留資料，但預設不參與一般 routing
 
 ---
 
@@ -75,10 +82,13 @@
 
 ## 4. 結束處理
 
-- 若使用 `python -m info_collector collect-from-topic ...`，狀態會自動寫回 `resources.yaml`。
+- 若使用 `python -m info_collector collect-from-topic ...`，狀態會自動寫回 `resources.yaml` 的 `channel_state` 區塊。
 - 若需要手動修正狀態，可使用：
   - `python -m info_collector get-last-checked --channel [頻道名稱]`
   - `python -m info_collector update-last-checked --channel [頻道名稱] --title "[影片標題]"`
+- 若需要檢查追蹤層級，可使用：
+  - `python -m info_collector list-channels --watch-tier core`
+  - `python -m info_collector list-channels --watch-tier normal`
 
 ## 5. 目前產品邊界
 

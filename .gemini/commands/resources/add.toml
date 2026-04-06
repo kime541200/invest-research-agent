@@ -22,11 +22,15 @@ prompt = """
 ```yaml
   <ChannelId>:
     url: <頻道首頁連結>
-    last_checked_video_title: ""
     tags: ["標籤1", "標籤2", ...]
-    always_watch: false
+    watch_tier: normal
 ```
-請留意不要破壞原本檔案內部的縮排（預設下 `yt_channels` 的子節點縮排通常是 2 空格）。
+另外也要在 `channel_state` 下建立對應節點：
+```yaml
+  <ChannelId>:
+    last_checked_video_title: ""
+```
+請留意不要破壞原本檔案內部的縮排（預設下 `yt_channels` 與 `channel_state` 的子節點縮排通常是 2 空格）。
 
 ## 4. 更新 resources.yaml
 使用 `replace_file_content`、`multi_replace_file_content` 或是其他文件編輯工具，將上述資訊寫入專案根目錄的 `resources.yaml` 中的 `yt_channels` 欄位底下。
@@ -35,5 +39,5 @@ prompt = """
 更新完畢後，請以簡潔的格式向使用者回報：
 - 新增的頻道名稱與 URL
 - 自動歸納出的 Tags 分別是什麼
-- 提醒使用者如果對於自動產生的 Tags 或 `always_watch` 有進一步調整需求，可以直接告訴你。
+- 提醒使用者如果對於自動產生的 Tags 或 `watch_tier` 有進一步調整需求，可以直接告訴你。
 """

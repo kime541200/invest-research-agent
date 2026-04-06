@@ -4,6 +4,7 @@ import re
 from collections.abc import Iterable
 
 from info_collector.models import ChannelConfig, RoutedChannel
+from info_collector.state_store import WATCH_TIER_ORDER
 
 
 class TopicRouter:
@@ -21,6 +22,8 @@ class TopicRouter:
         routed: list[RoutedChannel] = []
 
         for channel in channels:
+            if channel.watch_tier == "paused":
+                continue
             score, matched_terms, reason = self._score_channel(channel, topic_text, topic_tokens)
             if score <= 0:
                 continue
@@ -36,7 +39,8 @@ class TopicRouter:
         routed.sort(
             key=lambda item: (
                 -item.score,
-                not item.channel.always_watch,
+                WATCH_TIER_ORDER.get(item.channel.watch_tier, WATCH_TIER_ORDER["paused"]),
+                -item.channel.priority,
                 item.channel.name.lower(),
             )
         )
@@ -49,13 +53,14 @@ class TopicRouter:
                 channel=channel,
                 score=float(max(channel.priority, 0)),
                 matched_terms=[],
-                reason="找不到明確標籤命中，改用 priority 與 always_watch 做保守排序。",
+                reason="找不到明確標籤命中，改用 watch_tier 與 priority 做保守排序。",
             )
             for channel in channels
+            if channel.watch_tier != "paused"
         ]
         fallback.sort(
             key=lambda item: (
-                not item.channel.always_watch,
+                WATCH_TIER_ORDER.get(item.channel.watch_tier, WATCH_TIER_ORDER["paused"]),
                 -item.channel.priority,
                 item.channel.name.lower(),
             )
@@ -106,9 +111,15 @@ class TopicRouter:
             matched_terms.extend(description_hits)
             reasons.append(f"描述補強: {', '.join(description_hits[:3])}")
 
-        if score > 0 and channel.always_watch:
-            score += 0.5
-            reasons.append("always_watch 加權")
+        tier_bonus = {
+            "core": 1.5,
+            "normal": 0.5,
+            "optional": 0.0,
+            "paused": -999.0,
+        }.get(channel.watch_tier, 0.0)
+        if tier_bonus > 0:
+            score += tier_bonus
+            reasons.append(f"watch_tier 加權: {channel.watch_tier}")
 
         deduped_terms = _dedupe_preserving_order(matched_terms)
         reason = "；".join(reasons) if reasons else "由 priority 提供基礎排序。"

@@ -36,10 +36,22 @@ def test_topic_router_uses_priority_as_fallback() -> None:
     router = TopicRouter()
     channels = [
         ChannelConfig(name="low", url="https://example.com/low", priority=1),
-        ChannelConfig(name="high", url="https://example.com/high", priority=5, always_watch=True),
+        ChannelConfig(name="high", url="https://example.com/high", priority=5, watch_tier="core"),
     ]
 
     routed = router.route("完全無關的主題", channels, limit=2)
 
     assert routed[0].channel.name == "high"
     assert "priority" in routed[0].reason
+
+
+def test_topic_router_excludes_paused_channels() -> None:
+    router = TopicRouter()
+    channels = [
+        ChannelConfig(name="paused", url="https://example.com/paused", tags=["AI"], watch_tier="paused"),
+        ChannelConfig(name="normal", url="https://example.com/normal", tags=["AI"], watch_tier="normal"),
+    ]
+
+    routed = router.route("AI", channels, limit=5)
+
+    assert [item.channel.name for item in routed] == ["normal"]

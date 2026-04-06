@@ -2,20 +2,29 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 from typing import Any
+
+WatchTier = Literal["core", "normal", "optional", "paused"]
+
+
+@dataclass(frozen=True)
+class ChannelState:
+    last_checked_video_title: str = ""
+    channel_id: str | None = None
 
 
 @dataclass(frozen=True)
 class ChannelConfig:
     name: str
     url: str
-    last_checked_video_title: str = ""
     alias: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
-    always_watch: bool = False
+    watch_tier: WatchTier = "normal"
     description: str = ""
     topic_keywords: list[str] = field(default_factory=list)
     priority: int = 0
+    last_checked_video_title: str = ""
     channel_id: str | None = None
 
 

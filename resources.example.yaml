@@ -1,8 +1,6 @@
 yt_channels:
   Gooaye:
     url: https://www.youtube.com/@Gooaye
-    last_checked_video_title: EP650 | 🦄
-    channel_id: ""
     alias:
       - 股癌
       - 謝孟恭
@@ -17,13 +15,11 @@ yt_channels:
       - 總經
       - 資產配置
       - 市場情緒
-    description: 聚焦投資市場、產業觀察與資產配置的長談節目。
+    watch_tier: core
     priority: 5
-    always_watch: true
+    description: 聚焦投資市場、產業觀察與資產配置的長談節目。
   inside6202:
     url: https://www.youtube.com/@inside6202
-    last_checked_video_title: ""
-    channel_id: ""
     alias:
       - Fox
       - Inside
@@ -37,6 +33,14 @@ yt_channels:
       - 新創
       - SaaS
       - 產品策略
-    description: 科技、AI、創業與商業模式的訪談與討論。
+    watch_tier: normal
     priority: 4
-    always_watch: false
+    description: 科技、AI、創業與商業模式的訪談與討論。
+
+channel_state:
+  Gooaye:
+    last_checked_video_title: EP650 | 🦄
+    channel_id: ""
+  inside6202:
+    last_checked_video_title: ""
+    channel_id: ""

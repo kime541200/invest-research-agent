@@ -136,15 +136,22 @@ class CollectorOrchestrator:
     def list_tags(self) -> list[str]:
         return self.state_store.get_all_tags()
 
-    def list_channels(self, always_watch_only: bool = False) -> list[dict[str, Any]]:
+    def list_channels(
+        self,
+        watch_tier: str | None = None,
+        include_paused: bool = False,
+    ) -> list[dict[str, Any]]:
         channels = self.state_store.get_channels()
-        if always_watch_only:
-            channels = [channel for channel in channels if channel.always_watch]
+        if not include_paused:
+            channels = [channel for channel in channels if channel.watch_tier != "paused"]
+        if watch_tier is not None:
+            channels = [channel for channel in channels if channel.watch_tier == watch_tier]
         return [
             {
                 "channel": channel.name,
                 "url": channel.url,
-                "always_watch": channel.always_watch,
+                "watch_tier": channel.watch_tier,
+                "priority": channel.priority,
             }
             for channel in channels
         ]
@@ -155,17 +162,11 @@ class CollectorOrchestrator:
             return None
         return channel.tags
 
-    def get_channels_by_tags(self, tags: list[str]) -> dict[str, list[dict[str, str]]]:
-        always_watch, optional_watch = self.state_store.get_channels_by_tags(tags)
+    def get_channels_by_tags(self, tags: list[str], include_paused: bool = False) -> dict[str, list[dict[str, str]]]:
+        grouped = self.state_store.get_channels_by_tags(tags, include_paused=include_paused)
         return {
-            "always_watch": [
-                {"channel": channel.name, "url": channel.url}
-                for channel in always_watch
-            ],
-            "optional_watch": [
-                {"channel": channel.name, "url": channel.url}
-                for channel in optional_watch
-            ],
+            tier: [{"channel": channel.name, "url": channel.url} for channel in channels]
+            for tier, channels in grouped.items()
         }
 
     def get_last_checked_title(self, channel_name: str) -> str | None:

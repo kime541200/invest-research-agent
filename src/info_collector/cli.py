@@ -77,7 +77,13 @@ def _build_parser() -> argparse.ArgumentParser:
     list_tags.set_defaults(handler=_handle_list_tags)
 
     list_channels = subparsers.add_parser("list-channels", help="列出所有頻道")
-    list_channels.add_argument("--always-watch", action="store_true", help="只列出 always_watch 頻道")
+    list_channels.add_argument(
+        "--watch-tier",
+        choices=["core", "normal", "optional", "paused"],
+        default=None,
+        help="只列出指定 watch_tier 的頻道",
+    )
+    list_channels.add_argument("--include-paused", action="store_true", help="包含 paused 頻道")
     list_channels.add_argument("--json", action="store_true", help="輸出 JSON")
     list_channels.set_defaults(handler=_handle_list_channels)
 
@@ -88,6 +94,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     channels_by_tags = subparsers.add_parser("get-channels-by-tags", help="依 tags 列出頻道")
     channels_by_tags.add_argument("--tags", nargs="+", required=True, help="一個或多個 tags")
+    channels_by_tags.add_argument("--include-paused", action="store_true", help="包含 paused 頻道")
     channels_by_tags.add_argument("--json", action="store_true", help="輸出 JSON")
     channels_by_tags.set_defaults(handler=_handle_get_channels_by_tags)
 
@@ -182,14 +189,20 @@ def _handle_list_tags(args: argparse.Namespace, orchestrator: CollectorOrchestra
 
 
 def _handle_list_channels(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
-    channels = orchestrator.list_channels(always_watch_only=args.always_watch)
+    channels = orchestrator.list_channels(
+        watch_tier=args.watch_tier,
+        include_paused=args.include_paused,
+    )
     if args.json:
         print(json.dumps(channels, ensure_ascii=False, indent=2))
         return
-    title = "=== 必看頻道 ===" if args.always_watch else f"=== 全部頻道 ({len(channels)} 個) ==="
+    if args.watch_tier:
+        title = f"=== {args.watch_tier} 頻道 ({len(channels)} 個) ==="
+    else:
+        title = f"=== 全部頻道 ({len(channels)} 個) ==="
     print(title)
     for item in channels:
-        print(f"- {item['channel']}: {item['url']}")
+        print(f"- {item['channel']} [{item['watch_tier']}] priority={item['priority']}: {item['url']}")
 
 
 def _handle_get_channel_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
@@ -203,21 +216,19 @@ def _handle_get_channel_tags(args: argparse.Namespace, orchestrator: CollectorOr
 
 
 def _handle_get_channels_by_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
-    result = orchestrator.get_channels_by_tags(args.tags)
+    result = orchestrator.get_channels_by_tags(args.tags, include_paused=args.include_paused)
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
     print(f"=== 包含標籤 {', '.join(args.tags)} 的頻道 ===")
-    if result["always_watch"]:
-        print("\n[必看頻道 - always_watch: true]")
-        for item in result["always_watch"]:
-            print(f"- {item['channel']}: {item['url']}")
-    if result["optional_watch"]:
-        print("\n[選看頻道 - always_watch: false]")
-        for item in result["optional_watch"]:
-            print(f"- {item['channel']}: {item['url']}")
-    if not result["always_watch"] and not result["optional_watch"]:
+    if not result:
         raise SystemExit("找不到符合的頻道")
+    for tier in ["core", "normal", "optional", "paused"]:
+        if tier not in result:
+            continue
+        print(f"\n[{tier} 頻道]")
+        for item in result[tier]:
+            print(f"- {item['channel']}: {item['url']}")
 
 
 def _handle_get_last_checked(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:

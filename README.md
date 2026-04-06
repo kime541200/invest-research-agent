@@ -5,11 +5,11 @@
 目前主流程已聚焦在這條可重跑的 pipeline：
 
 1. 使用者輸入想討論的主題
-2. 系統根據 `resources.yaml` 的 `tags`、`alias`、`topic_keywords` 推薦頻道
+2. 系統根據 `resources.yaml` 中 `yt_channels` 的 `tags`、`alias`、`topic_keywords` 推薦頻道
 3. 透過 `yt-mcp-server` 抓取候選頻道的最新影片與字幕
 4. 將字幕整理成較適合 Agent 消化的內容
 5. 產出標準化 Markdown 筆記到 `notes/YYYY-MM-DD/`
-6. 更新 `resources.yaml` 的 `last_checked_video_title`，避免重複處理
+6. 更新 `resources.yaml` 的 `channel_state`，避免重複處理
 
 ## 快速開始
 
@@ -115,14 +115,17 @@ npx mcporter call yt-mcp-server.transcripts_getTranscript video_id=7U1qyLstvBU -
 `yt_channels.<channel_name>` 目前支援以下欄位：
 
 - `url`: 頻道網址
-- `last_checked_video_title`: 上次成功處理的最新影片標題
 - `alias`: 頻道別名
 - `tags`: 基礎主題標籤
 - `topic_keywords`: 更細的路由關鍵詞
 - `description`: 頻道內容描述
+- `watch_tier`: 追蹤層級，支援 `core`、`normal`、`optional`、`paused`
 - `priority`: 命中後的排序加權
+
+執行期狀態則寫在 `channel_state.<channel_name>`：
+
+- `last_checked_video_title`: 上次成功處理的最新影片標題
 - `channel_id`: 快取過的 YouTube channel id，可留空
-- `always_watch`: 命中主題時提高優先度
 
 可參考 `resources.example.yaml`。
 
@@ -157,11 +160,11 @@ source .venv/bin/activate
 python -m info_collector list-channels
 ```
 
-只列出 `always_watch` 頻道：
+只列出 `core` 頻道：
 
 ```bash
 source .venv/bin/activate
-python -m info_collector list-channels --always-watch
+python -m info_collector list-channels --watch-tier core
 ```
 
 查詢某個頻道的 tags：

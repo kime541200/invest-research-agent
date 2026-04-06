@@ -108,7 +108,6 @@ def test_orchestrator_collects_and_updates_state(tmp_path: Path) -> None:
 yt_channels:
   inside6202:
     url: https://www.youtube.com/@inside6202
-    last_checked_video_title: 舊影片
     alias:
       - Inside
     tags:
@@ -116,7 +115,10 @@ yt_channels:
       - AI
     topic_keywords:
       - 新創
-    always_watch: false
+    watch_tier: normal
+channel_state:
+  inside6202:
+    last_checked_video_title: 舊影片
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -150,9 +152,11 @@ def test_orchestrator_uses_stt_fallback_when_native_transcript_unavailable(tmp_p
 yt_channels:
   inside6202:
     url: https://www.youtube.com/@inside6202
-    last_checked_video_title: 舊影片
     tags:
       - AI
+channel_state:
+  inside6202:
+    last_checked_video_title: 舊影片
 """.strip()
         + "\n",
         encoding="utf-8",
