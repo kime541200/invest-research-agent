@@ -4,10 +4,12 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from info_collector.audio_downloader import AudioDownloader
 from info_collector.dedupe import select_new_videos
 from info_collector.models import ChannelCollectionResult, CollectionResult
 from info_collector.note_generator import MarkdownNoteGenerator, NoteContext
 from info_collector.state_store import ResourceStateStore
+from info_collector.stt import SttClient
 from info_collector.topic_router import TopicRouter
 from info_collector.video_fetcher import YouTubeMcpGateway
 
@@ -20,12 +22,16 @@ class CollectorOrchestrator:
         video_gateway: YouTubeMcpGateway,
         note_generator: MarkdownNoteGenerator,
         notes_root: Path | str,
+        audio_downloader: AudioDownloader | None = None,
+        stt_client: SttClient | None = None,
     ) -> None:
         self.state_store = state_store
         self.topic_router = topic_router
         self.video_gateway = video_gateway
         self.note_generator = note_generator
         self.notes_root = Path(notes_root)
+        self.audio_downloader = audio_downloader
+        self.stt_client = stt_client
 
     def collect_from_topic(
         self,
@@ -59,6 +65,11 @@ class CollectorOrchestrator:
                     for video in new_videos:
                         transcript = self.video_gateway.get_transcript(
                             video.video_id,
+                            language=transcript_language,
+                        )
+                        transcript = self._get_best_available_transcript(
+                            video=video,
+                            transcript=transcript,
                             language=transcript_language,
                         )
                         note = self.note_generator.write_note(
@@ -172,3 +183,36 @@ class CollectorOrchestrator:
             channel_result["note_paths"] = [str(path) for path in channel_result["note_paths"]]
         data["output_dir"] = str(result.output_dir)
         return data
+
+    def _get_best_available_transcript(
+        self,
+        video: Any,
+        transcript: Any,
+        language: str | None = None,
+    ) -> Any:
+        if getattr(transcript, "status", "ok") != "unavailable":
+            return transcript
+        if self.audio_downloader is None or self.stt_client is None:
+            return transcript
+
+        try:
+            audio_path = self.audio_downloader.download_audio(video)
+            stt_transcript = self.stt_client.transcribe(
+                audio_path=audio_path,
+                video_id=video.video_id,
+                language=language,
+            )
+            self.audio_downloader.handle_success(audio_path)
+            return stt_transcript
+        except Exception as exc:
+            reason = transcript.reason or "native_transcript_unavailable"
+            return transcript.__class__(
+                video_id=transcript.video_id,
+                language=transcript.language,
+                status="unavailable",
+                reason=f"{reason}; stt_fallback_failed: {exc}",
+                full_text=transcript.full_text,
+                merged_full_text=transcript.merged_full_text,
+                transcript=transcript.transcript,
+                merged_transcript=transcript.merged_transcript,
+            )

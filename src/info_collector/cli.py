@@ -4,10 +4,12 @@ import argparse
 import json
 from pathlib import Path
 
+from info_collector.audio_downloader import AudioDownloader, load_audio_cache_settings
 from info_collector.mcp_client import McpHttpClient
 from info_collector.note_generator import MarkdownNoteGenerator
 from info_collector.orchestrator import CollectorOrchestrator
 from info_collector.state_store import ResourceStateStore
+from info_collector.stt import SttClient, check_stt_provider, load_stt_settings
 from info_collector.topic_router import TopicRouter
 from info_collector.video_fetcher import YouTubeMcpGateway
 
@@ -45,6 +47,11 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=30.0,
         help="MCP 連線 timeout 秒數",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        default=".cache/info-collector",
+        help="快取輸出目錄（音訊下載等）",
     )
 
     subparsers = parser.add_subparsers(dest="command")
@@ -94,6 +101,10 @@ def _build_parser() -> argparse.ArgumentParser:
     update_last_checked.add_argument("--title", required=True, help="新的影片標題")
     update_last_checked.set_defaults(handler=_handle_update_last_checked)
 
+    check_stt = subparsers.add_parser("check-stt", help="檢查 STT provider 設定與健康狀態")
+    check_stt.add_argument("--json", action="store_true", help="輸出 JSON")
+    check_stt.set_defaults(handler=_handle_check_stt)
+
     return parser
 
 
@@ -101,18 +112,25 @@ def _build_orchestrator(args: argparse.Namespace) -> CollectorOrchestrator:
     project_root = Path.cwd()
     resources_file = _resolve_project_path(project_root, args.resources_file)
     notes_dir = _resolve_project_path(project_root, args.notes_dir)
+    cache_dir = _resolve_project_path(project_root, args.cache_dir)
 
     state_store = ResourceStateStore(resources_file)
     topic_router = TopicRouter()
     client = McpHttpClient(endpoint=args.mcp_url, timeout=args.timeout)
     gateway = YouTubeMcpGateway(client)
     note_generator = MarkdownNoteGenerator()
+    stt_settings = load_stt_settings(project_root)
+    stt_client = SttClient(stt_settings) if stt_settings is not None else None
+    audio_cache_settings = load_audio_cache_settings(project_root)
+    audio_downloader = AudioDownloader(cache_dir / "audio", cache_settings=audio_cache_settings)
     return CollectorOrchestrator(
         state_store=state_store,
         topic_router=topic_router,
         video_gateway=gateway,
         note_generator=note_generator,
         notes_root=notes_dir,
+        audio_downloader=audio_downloader,
+        stt_client=stt_client,
     )
 
 
@@ -218,6 +236,23 @@ def _handle_update_last_checked(args: argparse.Namespace, orchestrator: Collecto
     except KeyError:
         raise SystemExit(f"找不到頻道: {args.channel}") from None
     print(f"成功更新 {args.channel} 的最後確認影片為: '{args.title}'")
+
+
+def _handle_check_stt(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+    del orchestrator
+    settings = load_stt_settings(Path.cwd())
+    health = check_stt_provider(settings)
+    payload = {
+        "ok": health.ok,
+        "provider": health.provider or None,
+        "message": health.message,
+    }
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    print(f"STT provider: {health.provider or '(未設定)'}")
+    print(f"狀態: {'ok' if health.ok else 'not_ready'}")
+    print(f"訊息: {health.message}")
 
 
 def _resolve_project_path(project_root: Path, target: str) -> Path:

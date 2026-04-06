@@ -42,12 +42,16 @@ python -m info_collector route-topic --topic "AI 新創與科技商業趨勢"
 ```text
 .
 ├── AGENTS.md
+├── infra/
+│   └── stt/
+│       └── speaches/
 ├── config/
 │   └── mcporter.json
 ├── docs/
 │   └── mcp-config/
 ├── modules/
 │   └── yt-mcp-server/
+├── .env.example
 ├── notes/
 ├── pyproject.toml
 ├── resources.example.yaml
@@ -63,6 +67,7 @@ python -m info_collector route-topic --topic "AI 新創與科技商業趨勢"
 - `yt-mcp-server` 已正確啟動並可由 `http://localhost:8088/mcp` 存取
 - 專案根目錄存在 `resources.yaml`
 - `modules/yt-mcp-server/.env` 內有可用的 `YOUTUBE_API_KEY`
+- 若要啟用無字幕影片 fallback，需另外配置 STT provider（本地 `speaches` 或雲端 provider）
 
 如果還沒初始化子模組：
 
@@ -79,6 +84,8 @@ uv venv
 source .venv/bin/activate
 uv pip install -e ".[dev]"
 ```
+
+若要啟用 STT fallback，可先複製根目錄 `.env.example` 為 `.env`，填入 STT 設定。
 
 ## MCP 存取方式
 
@@ -125,6 +132,13 @@ npx mcporter call yt-mcp-server.transcripts_getTranscript video_id=7U1qyLstvBU -
 
 ```bash
 python -m info_collector ...
+```
+
+若要先檢查 STT provider 是否可用：
+
+```bash
+source .venv/bin/activate
+python -m info_collector check-stt
 ```
 
 常用命令如下。
@@ -189,6 +203,8 @@ python -m info_collector collect-from-topic \
   --max-videos-per-channel 5 \
   --transcript-language zh-TW
 ```
+
+若原生字幕不可用，且 `.env` 已配置可用的 STT provider，流程會自動嘗試音訊下載與字幕 fallback。
 
 若只想驗證 routing 與 yt-mcp-server 連線，不寫入任何筆記或狀態：
 
@@ -257,14 +273,61 @@ notes/YYYY-MM-DD/
 
 - `tag-first` 頻道路由
 - `yt-mcp-server` 字幕抓取與結構化回傳
+- 可選的 STT provider 設定與健康檢查
 - 合併後字幕 `merged_transcript`
 - 筆記生成時優先使用合併後字幕
 - 以 `mcporter` 直接訪問 MCP server 的能力
 
 目前尚未完成或仍在後續階段的部分：
 
-- 無字幕影片的替代內容擷取策略
 - 更完整的摘要與對話式分析能力
+
+## STT Provider
+
+若要讓沒有原生字幕的影片也能進入分析流程，目前可配置一個 STT provider。
+
+本地預設方案：
+
+- `speaches`
+- 部署資產位於 `infra/stt/speaches/`
+- 預設 API base URL：`http://localhost:8089/v1`
+- `python -m info_collector check-stt` 會檢查服務與指定模型是否就緒
+
+雲端 provider 方向：
+
+- OpenAI Whisper API
+- Groq Whisper API
+
+統一設定欄位位於根目錄 `.env`：
+
+```env
+STT_PROVIDER=speaches
+STT_BASE_URL=http://localhost:8089/v1
+STT_MODEL=Systran/faster-whisper-small
+STT_API_KEY=
+STT_TIMEOUT=300
+STT_LANGUAGE=zh
+AUDIO_CACHE_POLICY=ttl
+AUDIO_CACHE_TTL_DAYS=7
+```
+
+音訊快取預設採 `ttl` 策略，會在每次執行收集流程時，自動清掉超過 `7` 天的舊音檔。若想改成立即刪除，也可把 `AUDIO_CACHE_POLICY` 改成 `delete-on-success`。
+
+常見設定範例：
+
+```env
+# 預設：保留 7 天，讓同一支影片短期內可重跑
+AUDIO_CACHE_POLICY=ttl
+AUDIO_CACHE_TTL_DAYS=7
+```
+
+```env
+# 轉字幕成功後就立刻刪除音檔，盡量少佔空間
+AUDIO_CACHE_POLICY=delete-on-success
+AUDIO_CACHE_TTL_DAYS=7
+```
+
+對 Agent 來說，平常可直接沿用預設值；只有在使用者明確要求節省磁碟空間，或執行環境不適合保留暫存音檔時，再建議切換成 `delete-on-success`。
 
 ## 持續追蹤觀察
 

@@ -33,7 +33,7 @@
   - 透過 `yt-mcp-server` 解析 `channel_id`
   - 取得每個頻道最近影片
   - 用 `last_checked_video_title` 做去重
-  - 抓取字幕
+  - 優先抓取原生字幕，必要時再走音訊轉字幕 fallback
   - 產出 Markdown 筆記到 `notes/YYYY-MM-DD/`
   - 更新 `resources.yaml` 的 `last_checked_video_title`
 - 若只想預覽不落地，請加上 `--dry-run`。
@@ -44,6 +44,8 @@
 - 若沒有新影片，應明確回覆「沒有新影片」，而不是重複整理舊內容。
 - 若頻道第一次被處理，允許只處理最新 1 支影片，避免首次回填過量資料。
 - 若 `yt-mcp-server` 連線失敗，先排查 MCP server 狀態，確認恢復後再繼續。
+- 若要啟用無字幕影片 fallback，先確認使用者要走本地或雲端 STT，並完成對應 provider 的健康檢查。
+- 若使用音訊下載 fallback，預設沿用 `AUDIO_CACHE_POLICY=ttl` 與 `AUDIO_CACHE_TTL_DAYS=7`；只有在使用者明確要求節省空間或避免保留音檔時，再建議改成 `delete-on-success`。
 
 ---
 
@@ -81,5 +83,5 @@
 ## 5. 目前產品邊界
 
 - 目前先把 `主題 -> 頻道 -> 最新影片 -> 筆記` 這條主流程做穩。
-- 對於無字幕影片，現階段不依賴外部 grounding 流程或 NotebookLM 類型整合。
+- 對於無字幕影片，優先考慮音訊下載與 STT provider fallback，而不是外部 grounding 流程。
 - 若未來上游工具提供穩定的 `add source` 能力，再評估是否重新導入相關方案。
