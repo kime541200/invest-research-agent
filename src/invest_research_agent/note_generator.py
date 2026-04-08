@@ -5,7 +5,9 @@ from datetime import date
 from pathlib import Path
 import re
 
+from invest_research_agent.analysis_artifacts import AnalysisArtifact, build_unavailable_analysis_sections
 from invest_research_agent.models import ChannelConfig, GeneratedNote, TranscriptBundle, VideoMetadata
+from invest_research_agent.research_models import ResearchNoteSections
 
 
 @dataclass(frozen=True)
@@ -14,12 +16,15 @@ class NoteContext:
     channel: ChannelConfig
     video: VideoMetadata
     transcript: TranscriptBundle | None = None
+    research_sections: ResearchNoteSections | None = None
+    analysis_artifact: AnalysisArtifact | None = None
 
 
 class MarkdownNoteGenerator:
     def build_note(self, context: NoteContext) -> str:
         transcript_text = _get_preferred_transcript_text(context.transcript)
         transcript_lines = _build_full_transcript_lines(context.transcript)
+        research_sections = _resolve_research_sections(context)
 
         lines = [
             f"# {context.video.title}",
@@ -33,6 +38,29 @@ class MarkdownNoteGenerator:
             f"- **字幕語言：** {_get_transcript_language_label(context.transcript)}",
             "",
         ]
+
+        lines.extend(
+            [
+                "",
+                "## 📝 核心結論",
+                research_sections.core_conclusion or "- 待補",
+                "",
+                "## 📌 重點拆解",
+                *_build_bullet_lines(research_sections.key_points, fallback="- 待補"),
+                "",
+                "## ❓ 本片回答的問題",
+                *_build_bullet_lines(research_sections.answered_questions, fallback="- 待補"),
+                "",
+                "## 📎 重要依據 / 數據 / 例子",
+                *_build_bullet_lines(research_sections.evidence_points, fallback="- 待補"),
+                "",
+                "## ⚠️ 限制條件 / 前提",
+                *_build_bullet_lines(research_sections.limitations, fallback="- 待補"),
+                "",
+                "## 🔭 後續追蹤方向",
+                *_build_bullet_lines(research_sections.follow_up_questions, fallback="- 待補"),
+            ]
+        )
 
         if context.video.description.strip():
             lines.extend(
@@ -68,7 +96,7 @@ class MarkdownNoteGenerator:
         output_root: Path | str,
         output_date: date | None = None,
     ) -> GeneratedNote:
-        target_date = output_date or date.today()
+        target_date = output_date or date.fromisoformat(_date_from_video(context.video))
         note_dir = Path(output_root) / target_date.isoformat()
         note_dir.mkdir(parents=True, exist_ok=True)
         path = note_dir / _sanitize_filename(f"{context.channel.name}_{context.video.title}.md")
@@ -90,6 +118,13 @@ def _build_full_transcript_lines(transcript: TranscriptBundle | None) -> list[st
     if not transcript_text:
         return []
     return [_normalize_text(transcript_text)]
+
+
+def _build_bullet_lines(items: list[str], fallback: str) -> list[str]:
+    cleaned = [item for item in (_normalize_text(value) for value in items) if item]
+    if not cleaned:
+        return [fallback]
+    return [f"- {item}" for item in cleaned]
 
 
 def _date_from_video(video: VideoMetadata) -> str:
@@ -160,3 +195,11 @@ def _normalize_text(text: str) -> str:
 
 def _get_transcript_reason_text(transcript: TranscriptBundle) -> str:
     return _normalize_text(transcript.reason or "unknown")
+
+
+def _resolve_research_sections(context: NoteContext) -> ResearchNoteSections:
+    if context.research_sections is not None:
+        return context.research_sections
+    if context.analysis_artifact is not None and context.analysis_artifact.status == "ready":
+        return context.analysis_artifact.summary
+    return build_unavailable_analysis_sections(context.analysis_artifact)

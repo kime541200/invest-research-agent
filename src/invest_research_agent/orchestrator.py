@@ -4,10 +4,12 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from invest_research_agent.analysis_artifacts import AnalysisArtifactStore
 from invest_research_agent.audio_downloader import AudioDownloader
 from invest_research_agent.dedupe import select_new_videos
 from invest_research_agent.models import ChannelCollectionResult, CollectionResult
 from invest_research_agent.note_generator import MarkdownNoteGenerator, NoteContext
+from invest_research_agent.transcript_artifacts import TranscriptArtifactWriter
 from invest_research_agent.state_store import ResourceStateStore
 from invest_research_agent.stt import SttClient
 from invest_research_agent.topic_router import TopicRouter
@@ -22,6 +24,8 @@ class CollectorOrchestrator:
         video_gateway: YouTubeMcpGateway,
         note_generator: MarkdownNoteGenerator,
         notes_root: Path | str,
+        transcripts_root: Path | str | None = None,
+        analysis_root: Path | str | None = None,
         audio_downloader: AudioDownloader | None = None,
         stt_client: SttClient | None = None,
     ) -> None:
@@ -30,8 +34,12 @@ class CollectorOrchestrator:
         self.video_gateway = video_gateway
         self.note_generator = note_generator
         self.notes_root = Path(notes_root)
+        self.transcripts_root = Path(transcripts_root) if transcripts_root is not None else self.notes_root.parent / "transcripts"
+        self.analysis_root = Path(analysis_root) if analysis_root is not None else self.notes_root.parent / "analysis"
         self.audio_downloader = audio_downloader
         self.stt_client = stt_client
+        self.transcript_writer = TranscriptArtifactWriter()
+        self.analysis_store = AnalysisArtifactStore()
 
     def collect_from_topic(
         self,
@@ -40,6 +48,8 @@ class CollectorOrchestrator:
         max_videos_per_channel: int = 5,
         initial_video_limit: int = 1,
         transcript_language: str | None = None,
+        write_transcripts: bool = True,
+        initialize_analysis: bool = True,
         write_notes: bool = True,
         update_state: bool = True,
     ) -> CollectionResult:
@@ -60,24 +70,47 @@ class CollectorOrchestrator:
                     initial_video_limit=initial_video_limit,
                 )
                 note_paths = []
+                transcript_paths = []
+                analysis_paths = []
 
-                if write_notes:
-                    for video in new_videos:
-                        transcript = self.video_gateway.get_transcript(
-                            video.video_id,
-                            language=transcript_language,
-                        )
-                        transcript = self._get_best_available_transcript(
+                for video in new_videos:
+                    transcript = self.video_gateway.get_transcript(
+                        video.video_id,
+                        language=transcript_language,
+                    )
+                    transcript = self._get_best_available_transcript(
+                        video=video,
+                        transcript=transcript,
+                        language=transcript_language,
+                    )
+                    analysis_artifact = None
+                    transcript_artifact = None
+
+                    if write_transcripts:
+                        transcript_artifact = self.transcript_writer.write_artifact(
+                            topic=topic,
+                            channel=channel,
                             video=video,
                             transcript=transcript,
-                            language=transcript_language,
+                            output_root=self.transcripts_root,
                         )
+                        transcript_paths.append(transcript_artifact.path)
+
+                    if initialize_analysis and transcript_artifact is not None:
+                        analysis_artifact = self.analysis_store.initialize_pending(
+                            transcript_artifact=transcript_artifact,
+                            output_root=self.analysis_root,
+                        )
+                        analysis_paths.append(analysis_artifact.path)
+
+                    if write_notes:
                         note = self.note_generator.write_note(
                             NoteContext(
                                 topic=topic,
                                 channel=channel,
                                 video=video,
                                 transcript=transcript,
+                                analysis_artifact=analysis_artifact,
                             ),
                             output_root=self.notes_root,
                         )
@@ -96,6 +129,8 @@ class CollectorOrchestrator:
                         matched_terms=routed_channel.matched_terms,
                         fetched_videos=videos,
                         new_videos=new_videos,
+                        transcript_paths=transcript_paths,
+                        analysis_paths=analysis_paths,
                         note_paths=note_paths,
                         status=status,
                         message=message,
@@ -181,6 +216,8 @@ class CollectorOrchestrator:
     def to_dict(self, result: CollectionResult) -> dict[str, Any]:
         data = asdict(result)
         for channel_result in data["channel_results"]:
+            channel_result["transcript_paths"] = [str(path) for path in channel_result["transcript_paths"]]
+            channel_result["analysis_paths"] = [str(path) for path in channel_result["analysis_paths"]]
             channel_result["note_paths"] = [str(path) for path in channel_result["note_paths"]]
         data["output_dir"] = str(result.output_dir)
         return data

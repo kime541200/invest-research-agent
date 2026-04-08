@@ -77,35 +77,92 @@ flowchart TD
   - `AGENTS.md`
   - `docs/pre-required.md`
 
+### Phase 3: 研究筆記格式 v1
+
+- `notes/` 已加入固定研究區塊骨架：
+  - `核心結論`
+  - `重點拆解`
+  - `本片回答的問題`
+  - `重要依據 / 數據 / 例子`
+  - `限制條件 / 前提`
+  - `後續追蹤方向`
+- 目前採低風險、可重跑的最小自動填充策略：
+  - 優先沿用逐字稿片段
+  - 避免在主收集流程內直接綁定重型摘要或推理步驟
+
+### Phase 4: 研究層基礎與 enrichment pipeline v0
+
+- 已建立研究層基礎資料模型：
+  - claim
+  - evidence
+  - follow-up question
+  - research note section
+- 已建立 note parser 與 keyword extraction 的基礎流程
+- 已建立獨立的外部研究 enrichment pipeline
+- 已建立 RSS provider abstraction 與第一版 CLI 入口
+- 架構原則已落地：
+  - enrichment 不塞回 `collect_from_topic()` 熱路徑
+  - 研究層與蒐集層保持分離
+
+## 目前狀態
+
+已完成的近期進展：
+
+- 主流程硬化：
+  - 補強 `video_fetcher`
+  - 補強 `dedupe`
+  - 補強 CLI smoke 邊界
+- 研究筆記格式 v1 已落地
+- 研究模型 v0 已落地
+- RSS enrichment pipeline v0 已落地
+
+目前正在收斂的重點：
+
+- note 內容品質
+- keyword / claim extraction 品質
+- external evidence relevance 與排序品質
+
+尚未開始的重點：
+
+- opportunity routing
+- Polymarket analyzer
+- 股票 / ETF analyzer
+- portfolio model
+- Google Workspace sync
+
 ## 下一階段
 
 ### Phase 3: 研究筆記升級
 
-目標：把目前偏精簡的影片筆記，升級成更適合後續推理與投資研究的中繼筆記。
+目前狀態：研究筆記 `v1` 結構已完成。
+
+下一步目標：把目前已經有骨架的研究筆記，提升成更適合後續推理與投資研究的高品質中繼筆記。
 
 重點方向：
 
-- 補強 `核心結論`
-- 將 `重點摘要` 升級成更有層次的 `重點拆解`
-- 補出：
-  - 本片回答了哪些問題
-  - 重要依據 / 數據 / 例子
-  - 限制條件 / 前提
-  - 後續追蹤方向
+- 提升 `核心結論` 的品質，避免只停留在逐字稿第一段的近似重述
+- 將 `重點拆解` 做得更接近論點層次，而不是逐字稿片段重排
+- 提升 `重要依據 / 數據 / 例子` 與實際 claim 的對齊程度
+- 把 `限制條件 / 前提`、`後續追蹤方向` 從 placeholder 升級成真正可用的研究欄位
 
 預期成果：
 
-- `notes/` 中的 Markdown 不只是摘要，而是可供 Agent 後續研究的結構化材料
+- `notes/` 中的 Markdown 不只是 raw transcript 附帶摘要，而是可供 Agent 後續研究的結構化材料
+- 研究筆記內容品質足以承接後續的外部 research 與 opportunity routing
 
 ### Phase 4: 外部研究層
 
-目標：針對筆記中整理出的觀點，自動找外部資料做交叉驗證。
+目前狀態：外部研究 `v0` 流程已完成，包含獨立 enrichment pipeline、RSS provider abstraction 與 CLI 入口。
+
+下一步目標：提升外部 research 的資料品質與映射能力，讓 enrichment 結果更適合承接後續決策。
 
 重點方向：
 
-- 從單影片或主題批次中抽出論點與關鍵字
-- 為每個論點提取 3 個左右核心關鍵字
-- 建立可替換的外部資料 provider abstraction
+- 改善 note -> keyword / claim extraction
+- 為每個論點提取更穩定的核心關鍵字集合
+- 擴充可替換的外部資料 provider abstraction
+- 建立 note / claim / evidence 的對應關係
+- 定義 enrichment 結果如何回寫或附加到研究產物
 
 第一階段建議優先：
 
@@ -149,6 +206,7 @@ Polymarket 是重要路線之一，但不是唯一目標。
 
 - 官方 CLI：[Polymarket CLI](https://github.com/Polymarket/polymarket-cli.git)
 - 官方 Agent Skill：[Polymarket Agent Skills](https://github.com/Polymarket/agent-skills.git)
+- 官方 Agent：[Polymarket Agents](https://github.com/Polymarket/agents.git)
 
 定位建議：
 
@@ -192,6 +250,43 @@ Polymarket 是重要路線之一，但不是唯一目標。
 - 受益是直接還是間接
 - 時間軸是否合理
 - 是否存在更直接的受益者
+
+## 技術調查紀錄
+
+### Gemini 作為 STT provider 的可行性
+
+調查背景：
+
+- 目前專案已支援：
+  - 本機 STT：`speaches`、`qwen3-asr`
+  - OpenAI-compatible 雲端 STT：`OpenAI`、`Groq`
+- 問題在於：Gemini 的音訊轉文字能力是否能直接沿用目前 OpenAI-compatible STT 介面接入。
+
+本次調查結論：
+
+- Gemini 確實具備音訊理解與轉寫能力，包含 transcription、translation、timestamps 等能力。
+- 但 Gemini 目前不應視為「可直接替換現有 Whisper-style `/audio/transcriptions` 端點」的 provider。
+- 現有專案的 STT 實作，核心假設是：
+  - `POST /audio/transcriptions`
+  - multipart file upload
+  - `response_format=verbose_json`
+  - `timestamp_granularities[]`
+- Gemini 的官方主路徑比較接近：
+  - 原生 Gemini API：`Files API + generate_content`
+  - Vertex AI OpenAI compatibility：`chat.completions + input_audio`
+- 換句話說，Gemini 雖然有 OpenAI-compatible 的部分介面，但目前不等於 Whisper STT endpoint compatible。
+
+目前決策：
+
+- 先不把 Gemini 納入現階段 STT provider。
+- 若未來要接 Gemini，應新增獨立的 `gemini` 或 `vertex-gemini` adapter，而不是硬塞進目前的 `openai-compatible transcription` 實作。
+- 若需求是「正式、穩定、專用」的 Google STT 路線，未來也可另外評估 `Google Cloud Speech-to-Text`，但它同樣不是現有 Whisper-compatible 介面。
+
+後續若重啟此題，建議先回答三個問題：
+
+- 目標是要「最少改動擴充 provider」，還是要「引入更強的多模態音訊理解」？
+- 是否接受為 Gemini 額外維護一條專用 client / adapter？
+- 是否更適合直接評估 Google 的專用 STT 產品，而不是 Gemini 多模態模型？
 
 ## 後續再探索
 
@@ -238,22 +333,27 @@ Polymarket 是重要路線之一，但不是唯一目標。
 
 ### P0
 
-- 穩定目前主流程
-- 補強研究筆記格式，讓 `notes/` 更適合作為後續分析輸入
+- 維持目前主流程穩定
+- 把 `collect-from-topic --dry-run` 與 smoke checklist 文件化
+- 確保後續優化不破壞收集鏈路
 
 ### P1
 
-- 建立外部研究層
-- 定義論點、證據、機會路由的資料模型
-- 先做主題批次分析，再支援單影片下鑽
+- 提升研究筆記內容品質
+- 改善 keyword / claim extraction
+- 強化 RSS / 外部資料 evidence 品質與排序
+- 讓 research artifacts 更適合作為後續 analyzer 的輸入
 
 ### P2
 
-- 實作投資機會路由器
-- 先接 Polymarket 與股票 / ETF 兩條路線
+- 定義更正式的 claim / evidence / research artifact 流程
+- 規劃 opportunity routing 的輸入介面
+- 為後續 Polymarket 與股票 / ETF 路線建立穩定邊界
 
 ### P3
 
+- 實作投資機會路由器
+- 先接 Polymarket 與股票 / ETF 兩條路線
 - 建立 portfolio model
 - 再決定如何與 Google Sheets / Docs 做同步
 

@@ -83,6 +83,8 @@ class ChannelCollectionResult:
     matched_terms: list[str]
     fetched_videos: list[VideoMetadata] = field(default_factory=list)
     new_videos: list[VideoMetadata] = field(default_factory=list)
+    transcript_paths: list[Path] = field(default_factory=list)
+    analysis_paths: list[Path] = field(default_factory=list)
     note_paths: list[Path] = field(default_factory=list)
     status: str = "pending"
     message: str = ""

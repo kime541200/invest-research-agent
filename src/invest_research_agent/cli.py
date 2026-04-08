@@ -4,12 +4,16 @@ import argparse
 import json
 from pathlib import Path
 
+from invest_research_agent.analysis_artifacts import AnalysisArtifactStore
 from invest_research_agent.audio_downloader import AudioDownloader, load_audio_cache_settings
+from invest_research_agent.external_research import RssResearchProvider
 from invest_research_agent.mcp_client import McpHttpClient
-from invest_research_agent.note_generator import MarkdownNoteGenerator
+from invest_research_agent.note_generator import MarkdownNoteGenerator, NoteContext
 from invest_research_agent.orchestrator import CollectorOrchestrator
+from invest_research_agent.research_pipeline import ResearchNoteEnricher, write_enrichment_result
 from invest_research_agent.state_store import ResourceStateStore
 from invest_research_agent.stt import SttClient, check_stt_provider, load_stt_settings
+from invest_research_agent.transcript_artifacts import artifact_to_note_context_data, read_transcript_artifact
 from invest_research_agent.topic_router import TopicRouter
 from invest_research_agent.video_fetcher import YouTubeMcpGateway
 
@@ -21,7 +25,8 @@ def main() -> None:
         parser.print_help()
         return
 
-    orchestrator = _build_orchestrator(args)
+    requires_orchestrator = getattr(args, "requires_orchestrator", True)
+    orchestrator = _build_orchestrator(args) if requires_orchestrator else None
     args.handler(args, orchestrator)
 
 
@@ -36,6 +41,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--notes-dir",
         default="notes",
         help="筆記輸出目錄",
+    )
+    parser.add_argument(
+        "--transcripts-dir",
+        default="transcripts",
+        help="逐字稿 artifact 輸出目錄",
+    )
+    parser.add_argument(
+        "--analysis-dir",
+        default="analysis",
+        help="analysis artifact 輸出目錄",
     )
     parser.add_argument(
         "--mcp-url",
@@ -71,6 +86,16 @@ def _build_parser() -> argparse.ArgumentParser:
     collect_topic.add_argument("--dry-run", action="store_true", help="只模擬流程，不寫 notes 也不更新狀態")
     collect_topic.add_argument("--json", action="store_true", help="輸出 JSON")
     collect_topic.set_defaults(handler=_handle_collect_topic)
+
+    export_topic = subparsers.add_parser("export-transcripts-from-topic", help="從主題收集影片並輸出 transcript artifacts")
+    export_topic.add_argument("--topic", required=True, help="使用者主題描述")
+    export_topic.add_argument("--max-channels", type=int, default=3, help="最多處理幾個頻道")
+    export_topic.add_argument("--max-videos-per-channel", type=int, default=5, help="每個頻道抓幾支最新影片")
+    export_topic.add_argument("--initial-video-limit", type=int, default=1, help="第一次處理頻道時最多抓幾支")
+    export_topic.add_argument("--transcript-language", default=None, help="字幕語言，例如 zh-TW")
+    export_topic.add_argument("--dry-run", action="store_true", help="只模擬流程，不更新狀態")
+    export_topic.add_argument("--json", action="store_true", help="輸出 JSON")
+    export_topic.set_defaults(handler=_handle_export_transcripts)
 
     list_tags = subparsers.add_parser("list-tags", help="列出所有 tags")
     list_tags.add_argument("--json", action="store_true", help="輸出 JSON")
@@ -110,7 +135,28 @@ def _build_parser() -> argparse.ArgumentParser:
 
     check_stt = subparsers.add_parser("check-stt", help="檢查 STT provider 設定與健康狀態")
     check_stt.add_argument("--json", action="store_true", help="輸出 JSON")
-    check_stt.set_defaults(handler=_handle_check_stt)
+    check_stt.set_defaults(handler=_handle_check_stt, requires_orchestrator=False)
+
+    enrich_notes = subparsers.add_parser("enrich-notes", help="為既有筆記補充外部研究證據")
+    enrich_notes.add_argument("--note-paths", nargs="*", default=None, help="指定一個或多個 note 路徑")
+    enrich_notes.add_argument("--date", default=None, help="只處理 notes/YYYY-MM-DD 內的筆記")
+    enrich_notes.add_argument("--rss-feed", nargs="+", required=True, help="一個或多個 RSS / Atom feed URL")
+    enrich_notes.add_argument("--keywords", nargs="*", default=None, help="覆蓋自動抽出的關鍵字")
+    enrich_notes.add_argument("--limit", type=int, default=5, help="每篇筆記最多保留幾筆外部證據")
+    enrich_notes.add_argument("--json", action="store_true", help="輸出 JSON，不寫 sidecar 檔")
+    enrich_notes.set_defaults(handler=_handle_enrich_notes, requires_orchestrator=False)
+
+    prepare_analysis = subparsers.add_parser("prepare-analysis", help="為 transcript artifact 初始化 analysis artifact")
+    prepare_analysis.add_argument("--transcript-path", required=True, help="transcript artifact 路徑")
+    prepare_analysis.add_argument("--output-path", default=None, help="analysis artifact 輸出路徑")
+    prepare_analysis.add_argument("--json", action="store_true", help="輸出 JSON")
+    prepare_analysis.set_defaults(handler=_handle_prepare_analysis, requires_orchestrator=False)
+
+    render_note = subparsers.add_parser("render-note", help="從 transcript artifact 與 analysis artifact 組裝最終筆記")
+    render_note.add_argument("--transcript-path", required=True, help="transcript artifact 路徑")
+    render_note.add_argument("--analysis-path", default=None, help="analysis artifact 路徑")
+    render_note.add_argument("--json", action="store_true", help="輸出 JSON")
+    render_note.set_defaults(handler=_handle_render_note, requires_orchestrator=False)
 
     return parser
 
@@ -119,6 +165,8 @@ def _build_orchestrator(args: argparse.Namespace) -> CollectorOrchestrator:
     project_root = Path.cwd()
     resources_file = _resolve_project_path(project_root, args.resources_file)
     notes_dir = _resolve_project_path(project_root, args.notes_dir)
+    transcripts_dir = _resolve_project_path(project_root, args.transcripts_dir)
+    analysis_dir = _resolve_project_path(project_root, args.analysis_dir)
     cache_dir = _resolve_project_path(project_root, args.cache_dir)
 
     state_store = ResourceStateStore(resources_file)
@@ -136,12 +184,15 @@ def _build_orchestrator(args: argparse.Namespace) -> CollectorOrchestrator:
         video_gateway=gateway,
         note_generator=note_generator,
         notes_root=notes_dir,
+        transcripts_root=transcripts_dir,
+        analysis_root=analysis_dir,
         audio_downloader=audio_downloader,
         stt_client=stt_client,
     )
 
 
-def _handle_route_topic(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+def _handle_route_topic(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    orchestrator = _require_orchestrator(orchestrator)
     routed = orchestrator.route_topic(topic=args.topic, limit=args.limit)
     if args.json:
         print(json.dumps(routed, ensure_ascii=False, indent=2))
@@ -154,13 +205,16 @@ def _handle_route_topic(args: argparse.Namespace, orchestrator: CollectorOrchest
         print(f"  理由: {item['reason']}")
 
 
-def _handle_collect_topic(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+def _handle_collect_topic(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    orchestrator = _require_orchestrator(orchestrator)
     result = orchestrator.collect_from_topic(
         topic=args.topic,
         max_channels=args.max_channels,
         max_videos_per_channel=args.max_videos_per_channel,
         initial_video_limit=args.initial_video_limit,
         transcript_language=args.transcript_language,
+        write_transcripts=not args.dry_run,
+        initialize_analysis=not args.dry_run,
         write_notes=not args.dry_run,
         update_state=not args.dry_run,
     )
@@ -174,11 +228,43 @@ def _handle_collect_topic(args: argparse.Namespace, orchestrator: CollectorOrche
         print(f"- {item.channel.name} | {item.status} | {item.message}")
         if item.new_videos:
             print(f"  新影片: {', '.join(video.title for video in item.new_videos)}")
+        if item.transcript_paths:
+            print(f"  逐字稿: {', '.join(str(path) for path in item.transcript_paths)}")
+        if item.analysis_paths:
+            print(f"  分析: {', '.join(str(path) for path in item.analysis_paths)}")
         if item.note_paths:
             print(f"  筆記: {', '.join(str(path) for path in item.note_paths)}")
 
 
-def _handle_list_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+def _handle_export_transcripts(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    orchestrator = _require_orchestrator(orchestrator)
+    result = orchestrator.collect_from_topic(
+        topic=args.topic,
+        max_channels=args.max_channels,
+        max_videos_per_channel=args.max_videos_per_channel,
+        initial_video_limit=args.initial_video_limit,
+        transcript_language=args.transcript_language,
+        write_transcripts=True,
+        initialize_analysis=True,
+        write_notes=False,
+        update_state=not args.dry_run,
+    )
+
+    if args.json:
+        print(json.dumps(orchestrator.to_dict(result), ensure_ascii=False, indent=2))
+        return
+
+    print(f"主題: {result.topic}")
+    for item in result.channel_results:
+        print(f"- {item.channel.name} | {item.status} | {item.message}")
+        if item.transcript_paths:
+            print(f"  逐字稿: {', '.join(str(path) for path in item.transcript_paths)}")
+        if item.analysis_paths:
+            print(f"  分析: {', '.join(str(path) for path in item.analysis_paths)}")
+
+
+def _handle_list_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    orchestrator = _require_orchestrator(orchestrator)
     tags = orchestrator.list_tags()
     if args.json:
         print(json.dumps(tags, ensure_ascii=False, indent=2))
@@ -188,7 +274,8 @@ def _handle_list_tags(args: argparse.Namespace, orchestrator: CollectorOrchestra
         print(f"- {tag}")
 
 
-def _handle_list_channels(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+def _handle_list_channels(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    orchestrator = _require_orchestrator(orchestrator)
     channels = orchestrator.list_channels(
         watch_tier=args.watch_tier,
         include_paused=args.include_paused,
@@ -205,7 +292,8 @@ def _handle_list_channels(args: argparse.Namespace, orchestrator: CollectorOrche
         print(f"- {item['channel']} [{item['watch_tier']}] priority={item['priority']}: {item['url']}")
 
 
-def _handle_get_channel_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+def _handle_get_channel_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    orchestrator = _require_orchestrator(orchestrator)
     tags = orchestrator.get_channel_tags(args.channel)
     if tags is None:
         raise SystemExit(f"找不到頻道: {args.channel}")
@@ -215,7 +303,8 @@ def _handle_get_channel_tags(args: argparse.Namespace, orchestrator: CollectorOr
     print(f"{args.channel} 標籤: {', '.join(tags)}")
 
 
-def _handle_get_channels_by_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+def _handle_get_channels_by_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    orchestrator = _require_orchestrator(orchestrator)
     result = orchestrator.get_channels_by_tags(args.tags, include_paused=args.include_paused)
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -231,7 +320,8 @@ def _handle_get_channels_by_tags(args: argparse.Namespace, orchestrator: Collect
             print(f"- {item['channel']}: {item['url']}")
 
 
-def _handle_get_last_checked(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+def _handle_get_last_checked(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    orchestrator = _require_orchestrator(orchestrator)
     title = orchestrator.get_last_checked_title(args.channel)
     if title is None:
         raise SystemExit(f"找不到頻道: {args.channel}")
@@ -241,7 +331,8 @@ def _handle_get_last_checked(args: argparse.Namespace, orchestrator: CollectorOr
     print(f"{args.channel} 上次確認的影片: {title if title else '(尚未紀錄)'}")
 
 
-def _handle_update_last_checked(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+def _handle_update_last_checked(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    orchestrator = _require_orchestrator(orchestrator)
     try:
         orchestrator.update_last_checked_title(args.channel, args.title)
     except KeyError:
@@ -249,7 +340,7 @@ def _handle_update_last_checked(args: argparse.Namespace, orchestrator: Collecto
     print(f"成功更新 {args.channel} 的最後確認影片為: '{args.title}'")
 
 
-def _handle_check_stt(args: argparse.Namespace, orchestrator: CollectorOrchestrator) -> None:
+def _handle_check_stt(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
     del orchestrator
     settings = load_stt_settings(Path.cwd())
     health = check_stt_provider(settings)
@@ -266,8 +357,114 @@ def _handle_check_stt(args: argparse.Namespace, orchestrator: CollectorOrchestra
     print(f"訊息: {health.message}")
 
 
+def _handle_enrich_notes(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    del orchestrator
+    provider = RssResearchProvider(feed_urls=args.rss_feed)
+    enricher = ResearchNoteEnricher(provider)
+    note_paths = _resolve_note_paths(
+        notes_dir=_resolve_project_path(Path.cwd(), args.notes_dir),
+        note_paths=args.note_paths,
+        date_value=args.date,
+    )
+    results = enricher.enrich_notes(
+        note_paths=note_paths,
+        keywords=args.keywords,
+        limit=args.limit,
+    )
+
+    if args.json:
+        payload = [
+            {
+                "note_path": str(item.note_path),
+                "note_title": item.note_title,
+                "keywords": item.keywords,
+                "evidence": [
+                    {
+                        "title": evidence.title,
+                        "source": evidence.source,
+                        "summary": evidence.summary,
+                        "url": evidence.url,
+                        "published_at": evidence.published_at,
+                        "score": evidence.score,
+                    }
+                    for evidence in item.evidence
+                ],
+            }
+            for item in results
+        ]
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+
+    for result in results:
+        output_path = write_enrichment_result(result)
+        print(f"- {result.note_title} | 關鍵字: {', '.join(result.keywords) if result.keywords else '(無)'}")
+        print(f"  研究輸出: {output_path}")
+        print(f"  命中文章數: {len(result.evidence)}")
+
+
+def _handle_prepare_analysis(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    del orchestrator
+    transcript_artifact = read_transcript_artifact(args.transcript_path)
+    store = AnalysisArtifactStore()
+    if args.output_path:
+        artifact = store.initialize_pending_at_path(transcript_artifact, args.output_path)
+    else:
+        artifact = store.initialize_pending(
+            transcript_artifact=transcript_artifact,
+            output_root=_resolve_project_path(Path.cwd(), args.analysis_dir),
+        )
+
+    if args.json:
+        print(artifact.path.read_text(encoding="utf-8"))
+        return
+
+    print(f"已初始化 analysis artifact: {artifact.path}")
+    print("下一步：在 Gemini CLI 中將 transcript artifact 交給 `@transcript-analyst`，並要求它填寫這個 analysis artifact。")
+
+
+def _handle_render_note(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    del orchestrator
+    transcript_artifact = read_transcript_artifact(args.transcript_path)
+    channel, video, transcript = artifact_to_note_context_data(transcript_artifact)
+    note_generator = MarkdownNoteGenerator()
+    analysis_artifact = None
+    if args.analysis_path:
+        analysis_artifact = AnalysisArtifactStore().read(args.analysis_path)
+
+    note = note_generator.write_note(
+        context=NoteContext(
+            topic=transcript_artifact.topic,
+            channel=channel,
+            video=video,
+            transcript=transcript,
+            analysis_artifact=analysis_artifact,
+        ),
+        output_root=_resolve_project_path(Path.cwd(), args.notes_dir),
+    )
+
+    if args.json:
+        print(json.dumps({"note_path": str(note.path), "content": note.content}, ensure_ascii=False, indent=2))
+        return
+
+    print(f"已產出筆記: {note.path}")
+
+
 def _resolve_project_path(project_root: Path, target: str) -> Path:
     target_path = Path(target)
     if target_path.is_absolute():
         return target_path
     return project_root / target_path
+
+
+def _resolve_note_paths(notes_dir: Path, note_paths: list[str] | None, date_value: str | None) -> list[Path]:
+    if note_paths:
+        return [Path(path) for path in note_paths]
+
+    target_dir = notes_dir / date_value if date_value else notes_dir
+    return sorted(target_dir.glob("**/*.md"))
+
+
+def _require_orchestrator(orchestrator: CollectorOrchestrator | None) -> CollectorOrchestrator:
+    if orchestrator is None:
+        raise RuntimeError("此命令需要 orchestrator")
+    return orchestrator

@@ -39,6 +39,27 @@
   - 更新 `resources.yaml` 的 `channel_state.<channel_name>.last_checked_video_title`
 - 若只想預覽不落地，請加上 `--dry-run`。
 
+### 步驟 2.2.1: 逐字稿與分析分層
+
+- 完整逐字稿取得後，應優先保存為獨立 transcript artifact，而不是只把內容埋進最終筆記。
+- transcript artifact 是事實層輸入；analysis artifact 是整理與推理層輸出；最終 note 則是展示與閱讀層。
+- 主 Agent 應負責：
+  - 擷取影片與字幕
+  - 保存 transcript artifact
+  - 準備 analysis artifact
+  - 整合最終 note
+- 主 Agent 不應直接根據長逐字稿產出研究報告內容；當 transcript artifact 已存在時，應優先委派給 `.gemini/agents/transcript-analyst.md` 定義的 `transcript-analyst` 子 Agent。
+- `transcript-analyst` 子 Agent 只負責：
+  - 讀取 transcript artifact
+  - 產出 analysis artifact
+  - 提煉 `核心結論`、`重點拆解`、`重要依據`、`限制條件`、`後續追蹤`
+- `transcript-analyst` 不負責：
+  - 重新抓影片或字幕
+  - 修改 `resources.yaml`
+  - 做外部 research enrichment
+  - 直接寫最終 note
+- 若 analysis artifact 尚未完成，最終 note 應明確標示分析尚未產出，而不是用逐字稿開頭幾句硬填摘要。
+
 ### 步驟 2.3: 例外與互動決策
 
 - 若主題命中過多頻道，優先回傳最相關的前幾個候選，並說明匹配理由。
@@ -81,6 +102,11 @@
 ## 4. 結束處理
 
 - 若使用 `python -m invest_research_agent collect-from-topic ...`，狀態會自動寫回 `resources.yaml` 的 `channel_state` 區塊。
+- 若要分步驗證 transcript -> analysis -> note 流程，可依序使用：
+  - `python -m invest_research_agent export-transcripts-from-topic --topic "[使用者主題]"`
+  - `python -m invest_research_agent prepare-analysis --transcript-path "[transcript artifact path]"`
+  - 在 Gemini CLI 中使用 `@transcript-analyst` 完成 analysis artifact
+  - `python -m invest_research_agent render-note --transcript-path "[transcript artifact path]" --analysis-path "[analysis artifact path]"`
 - 若需要手動修正狀態，可使用：
   - `python -m invest_research_agent get-last-checked --channel [頻道名稱]`
   - `python -m invest_research_agent update-last-checked --channel [頻道名稱] --title "[影片標題]"`

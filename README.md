@@ -280,10 +280,41 @@ notes/YYYY-MM-DD/
 - 合併後字幕 `merged_transcript`
 - 筆記生成以 raw-first 為主，優先完整保存逐字稿內容
 - 以 `mcporter` 直接訪問 MCP server 的能力
+- transcript artifact 與 analysis artifact 的分層工作流
+- `export-transcripts-from-topic`、`prepare-analysis`、`render-note` 三段式驗證入口
+- Gemini CLI `transcript-analyst` 子 Agent 定義
 
 目前尚未完成或仍在後續階段的部分：
 
-- 更完整的摘要與對話式分析能力
+- 更完整的 transcript-analysis 自動化整合
+- 更高品質的摘要與對話式分析能力
+
+### Transcript -> Analysis -> Note
+
+目前建議把內容處理拆成三層：
+
+1. `transcript artifact`
+ - 保存完整逐字稿與 metadata
+2. `analysis artifact`
+ - 由 transcript 分析流程或 `transcript-analyst` 子 Agent 產出結構化重點
+3. `final note`
+ - 整合 transcript artifact 與 analysis artifact 後輸出的 Markdown 筆記
+
+若要分步驗證，可使用：
+
+```bash
+source .venv/bin/activate
+python -m invest_research_agent export-transcripts-from-topic --topic "區塊鏈資訊"
+python -m invest_research_agent prepare-analysis --transcript-path "transcripts/YYYY-MM-DD/example.transcript.md"
+# 接著在 Gemini CLI 中使用 @transcript-analyst 完成 analysis artifact
+python -m invest_research_agent render-note \
+  --transcript-path "transcripts/YYYY-MM-DD/example.transcript.md" \
+  --analysis-path "analysis/YYYY-MM-DD/example.analysis.json"
+```
+
+第一版 `transcript-analyst` 子 Agent 定義位於：
+
+- `.gemini/agents/transcript-analyst.md`
 
 ## STT Provider
 

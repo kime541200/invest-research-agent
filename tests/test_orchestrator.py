@@ -139,7 +139,11 @@ channel_state:
     channel_result = result.channel_results[0]
     assert channel_result.status == "processed"
     assert channel_result.new_videos[0].title == "新影片"
+    assert channel_result.transcript_paths[0].exists()
+    assert channel_result.analysis_paths[0].exists()
     assert channel_result.note_paths[0].exists()
+    note_content = channel_result.note_paths[0].read_text(encoding="utf-8")
+    assert "等待 transcript-analyst 子 Agent 根據逐字稿完成分析。" in note_content
 
     reloaded = ResourceStateStore(resource_file).get_channel("inside6202")
     assert reloaded is not None
@@ -181,4 +185,6 @@ channel_state:
     note_content = result.channel_results[0].note_paths[0].read_text(encoding="utf-8")
     assert "STT fallback 逐字稿" in note_content
     assert "- **字幕來源：** STT fallback" in note_content
+    assert result.channel_results[0].transcript_paths[0].exists()
+    assert result.channel_results[0].analysis_paths[0].exists()
     assert fake_downloader.success_paths == [fake_audio_path]
