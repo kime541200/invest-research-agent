@@ -35,6 +35,8 @@ node_modules/
 # Agent Notes
 notes/*
 !notes/.gitkeep
+analysis/
+transcripts/
 
 # OpenSpec development artifacts
 openspec/
