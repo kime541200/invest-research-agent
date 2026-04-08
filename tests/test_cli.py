@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 import json
 import sys
 from pathlib import Path
@@ -120,6 +121,7 @@ def test_cli_prepare_analysis_initializes_pending_artifact(tmp_path: Path, monke
             ],
         ),
         output_root=tmp_path / "transcripts",
+        output_date=date(2026, 4, 7),
     )
 
     monkeypatch.setattr(
@@ -142,6 +144,7 @@ def test_cli_prepare_analysis_initializes_pending_artifact(tmp_path: Path, monke
     created = next((tmp_path / "analysis").glob("**/*.analysis.json"))
     payload = json.loads(created.read_text(encoding="utf-8"))
     assert payload["status"] == "pending"
+    assert created == tmp_path / "analysis" / "2026-04-07" / "AI_商業模式" / "inside6202_AI_公司怎麼賺錢？.analysis.json"
 
 
 def test_cli_render_note_uses_ready_analysis_artifact(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -166,6 +169,7 @@ def test_cli_render_note_uses_ready_analysis_artifact(tmp_path: Path, monkeypatc
             ],
         ),
         output_root=tmp_path / "transcripts",
+        output_date=date(2026, 4, 7),
     )
     analysis_path = tmp_path / "analysis" / "ready.analysis.json"
     AnalysisArtifactStore().write(
@@ -207,5 +211,6 @@ def test_cli_render_note_uses_ready_analysis_artifact(tmp_path: Path, monkeypatc
     output = capsys.readouterr().out
     assert "已產出筆記:" in output
     note_path = next((tmp_path / "notes").glob("**/*.md"))
+    assert note_path == tmp_path / "notes" / "2026-04-07" / "區塊鏈資訊" / "brainbrocrypto_加密貨幣正在超車傳統金融體系.md"
     content = note_path.read_text(encoding="utf-8")
     assert "加密資產正加速與傳統金融接軌。" in content

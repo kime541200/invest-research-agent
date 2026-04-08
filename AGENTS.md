@@ -35,7 +35,7 @@
   - 取得每個頻道最近影片
   - 用 `last_checked_video_title` 做去重
   - 優先抓取原生字幕，必要時再走音訊轉字幕 fallback
-  - 產出 Markdown 筆記到 `notes/YYYY-MM-DD/`
+  - 產出 Markdown 筆記到 `notes/YYYY-MM-DD/<topic>/`
   - 更新 `resources.yaml` 的 `channel_state.<channel_name>.last_checked_video_title`
 - 若只想預覽不落地，請加上 `--dry-run`。
 

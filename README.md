@@ -8,7 +8,7 @@
 2. 系統根據 `resources.yaml` 中 `yt_channels` 的 `tags`、`alias`、`topic_keywords` 推薦頻道
 3. 透過 `yt-mcp-server` 抓取候選頻道的最新影片與字幕
 4. 將字幕整理成較適合 Agent 消化的內容
-5. 產出標準化 Markdown 筆記到 `notes/YYYY-MM-DD/`
+5. 產出標準化 Markdown 筆記到 `notes/YYYY-MM-DD/<topic>/`
 6. 更新 `resources.yaml` 的 `channel_state`，避免重複處理
 
 ## 快速開始
@@ -267,7 +267,7 @@ python -m invest_research_agent get-last-checked --channel inside6202
 完成後，新的 Markdown 筆記會寫到：
 
 ```text
-notes/YYYY-MM-DD/
+notes/YYYY-MM-DD/<topic>/
 ```
 
 ## 目前狀態
@@ -305,11 +305,11 @@ notes/YYYY-MM-DD/
 ```bash
 source .venv/bin/activate
 python -m invest_research_agent export-transcripts-from-topic --topic "區塊鏈資訊"
-python -m invest_research_agent prepare-analysis --transcript-path "transcripts/YYYY-MM-DD/example.transcript.md"
+python -m invest_research_agent prepare-analysis --transcript-path "transcripts/YYYY-MM-DD/區塊鏈資訊/example.transcript.md"
 # 接著在 Gemini CLI 中使用 @transcript-analyst 完成 analysis artifact
 python -m invest_research_agent render-note \
-  --transcript-path "transcripts/YYYY-MM-DD/example.transcript.md" \
-  --analysis-path "analysis/YYYY-MM-DD/example.analysis.json"
+  --transcript-path "transcripts/YYYY-MM-DD/區塊鏈資訊/example.transcript.md" \
+  --analysis-path "analysis/YYYY-MM-DD/區塊鏈資訊/example.analysis.json"
 ```
 
 第一版 `transcript-analyst` 子 Agent 定義位於：

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 import json
 from pathlib import Path
 
@@ -440,6 +441,7 @@ def _handle_render_note(args: argparse.Namespace, orchestrator: CollectorOrchest
             analysis_artifact=analysis_artifact,
         ),
         output_root=_resolve_project_path(Path.cwd(), args.notes_dir),
+        output_date=_resolve_collected_date(transcript_artifact.collected_date),
     )
 
     if args.json:
@@ -468,3 +470,9 @@ def _require_orchestrator(orchestrator: CollectorOrchestrator | None) -> Collect
     if orchestrator is None:
         raise RuntimeError("此命令需要 orchestrator")
     return orchestrator
+
+
+def _resolve_collected_date(value: str) -> date | None:
+    if not value:
+        return None
+    return date.fromisoformat(value)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,7 @@ class CollectorOrchestrator:
         channels = self.state_store.get_channels()
         routed_channels = self.topic_router.route(topic, channels, limit=max_channels)
         channel_results: list[ChannelCollectionResult] = []
+        collected_date = date.today()
 
         for routed_channel in routed_channels:
             channel = routed_channel.channel
@@ -93,6 +95,7 @@ class CollectorOrchestrator:
                             video=video,
                             transcript=transcript,
                             output_root=self.transcripts_root,
+                            output_date=collected_date,
                         )
                         transcript_paths.append(transcript_artifact.path)
 
@@ -113,6 +116,7 @@ class CollectorOrchestrator:
                                 analysis_artifact=analysis_artifact,
                             ),
                             output_root=self.notes_root,
+                            output_date=collected_date,
                         )
                         note_paths.append(note.path)
 

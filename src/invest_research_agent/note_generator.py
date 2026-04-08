@@ -96,8 +96,8 @@ class MarkdownNoteGenerator:
         output_root: Path | str,
         output_date: date | None = None,
     ) -> GeneratedNote:
-        target_date = output_date or date.fromisoformat(_date_from_video(context.video))
-        note_dir = Path(output_root) / target_date.isoformat()
+        target_date = output_date or date.today()
+        note_dir = Path(output_root) / target_date.isoformat() / _sanitize_path_segment(context.topic)
         note_dir.mkdir(parents=True, exist_ok=True)
         path = note_dir / _sanitize_filename(f"{context.channel.name}_{context.video.title}.md")
         content = self.build_note(context)
@@ -135,6 +135,12 @@ def _sanitize_filename(filename: str) -> str:
     sanitized = re.sub(r'[\\/:*?"<>|]+', "_", filename)
     sanitized = re.sub(r"\s+", "_", sanitized).strip("._")
     return sanitized or "note.md"
+
+
+def _sanitize_path_segment(value: str) -> str:
+    sanitized = re.sub(r'[\\/:*?"<>|]+', "_", value)
+    sanitized = re.sub(r"\s+", "_", sanitized).strip("._")
+    return sanitized or "untitled-topic"
 
 
 def _get_preferred_transcript(transcript: TranscriptBundle | None) -> list:

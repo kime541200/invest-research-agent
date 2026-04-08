@@ -27,7 +27,11 @@ class AnalysisArtifactStore:
         transcript_artifact: TranscriptArtifact,
         output_root: Path | str,
     ) -> AnalysisArtifact:
-        output_dir = Path(output_root) / transcript_artifact.published_date
+        output_dir = (
+            Path(output_root)
+            / transcript_artifact.collected_date
+            / _sanitize_path_segment(transcript_artifact.topic)
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
         path = output_dir / transcript_artifact.path.name.replace(".transcript.md", ".analysis.json")
         return self.initialize_pending_at_path(transcript_artifact, path)
@@ -88,3 +92,9 @@ def build_unavailable_analysis_sections(analysis_artifact: AnalysisArtifact | No
         limitations=["分析結果尚未可用。"],
         follow_up_questions=["完成 analysis artifact 後再產出正式研究重點。"],
     )
+
+
+def _sanitize_path_segment(value: str) -> str:
+    sanitized = "".join("_" if char in '\\/:*?"<>|' else char for char in value)
+    sanitized = "_".join(sanitized.split()).strip("._")
+    return sanitized or "untitled-topic"

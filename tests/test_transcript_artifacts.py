@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from invest_research_agent.models import ChannelConfig, TranscriptBundle, TranscriptSegment, VideoMetadata
@@ -34,6 +35,7 @@ def test_transcript_artifact_writer_and_reader_roundtrip(tmp_path: Path) -> None
             ],
         ),
         output_root=tmp_path,
+        output_date=date(2026, 4, 7),
     )
 
     loaded = read_transcript_artifact(artifact.path)
@@ -41,8 +43,10 @@ def test_transcript_artifact_writer_and_reader_roundtrip(tmp_path: Path) -> None
     assert loaded.title == "AI 公司怎麼賺錢？"
     assert loaded.channel == "inside6202"
     assert loaded.topic == "AI 商業模式"
+    assert loaded.collected_date == "2026-04-07"
     assert loaded.transcript_source == "原生字幕"
     assert loaded.segments[0].timestamp == "00:00"
+    assert artifact.path == tmp_path / "2026-04-07" / "AI_商業模式" / "inside6202_AI_公司怎麼賺錢？.transcript.md"
 
 
 def test_transcript_artifact_can_be_converted_back_to_note_context_data(tmp_path: Path) -> None:
@@ -68,6 +72,7 @@ def test_transcript_artifact_can_be_converted_back_to_note_context_data(tmp_path
             ],
         ),
         output_root=tmp_path,
+        output_date=date(2026, 4, 7),
     )
 
     channel, video, transcript = artifact_to_note_context_data(read_transcript_artifact(artifact.path))

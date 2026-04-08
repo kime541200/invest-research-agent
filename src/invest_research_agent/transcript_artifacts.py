@@ -15,6 +15,7 @@ class TranscriptArtifact:
     channel: str
     video_id: str
     video_url: str
+    collected_date: str
     published_date: str
     topic: str
     transcript_status: str
@@ -36,8 +37,8 @@ class TranscriptArtifactWriter:
         output_root: Path | str,
         output_date: date | None = None,
     ) -> TranscriptArtifact:
-        target_date = output_date or _get_video_date(video)
-        output_dir = Path(output_root) / target_date.isoformat()
+        target_date = output_date or date.today()
+        output_dir = Path(output_root) / target_date.isoformat() / _sanitize_path_segment(topic)
         output_dir.mkdir(parents=True, exist_ok=True)
         path = output_dir / _sanitize_filename(f"{channel.name}_{video.title}.transcript.md")
 
@@ -49,7 +50,8 @@ class TranscriptArtifactWriter:
             channel=channel.name,
             video_id=video.video_id,
             video_url=video.url,
-            published_date=target_date.isoformat(),
+            collected_date=target_date.isoformat(),
+            published_date=_get_video_date(video).isoformat(),
             topic=topic,
             transcript_status=_get_transcript_status_label(transcript),
             transcript_source=_get_transcript_source_label(transcript),
@@ -113,6 +115,7 @@ def read_transcript_artifact(path: Path | str) -> TranscriptArtifact:
         channel=metadata.get("頻道", ""),
         video_id=metadata.get("影片 ID", ""),
         video_url=metadata.get("來源", ""),
+        collected_date=metadata.get("收集日期", _infer_collected_date_from_path(artifact_path)),
         published_date=metadata.get("日期", ""),
         topic=metadata.get("主題", ""),
         transcript_status=metadata.get("字幕狀態", ""),
@@ -154,6 +157,7 @@ def _build_markdown_artifact(artifact: TranscriptArtifact) -> str:
         "",
         f"- **頻道：** {artifact.channel}",
         f"- **日期：** {artifact.published_date}",
+        f"- **收集日期：** {artifact.collected_date}",
         f"- **來源：** {artifact.video_url}",
         f"- **影片 ID：** {artifact.video_id}",
         f"- **主題：** {artifact.topic}",
@@ -217,6 +221,21 @@ def _sanitize_filename(filename: str) -> str:
     sanitized = re.sub(r'[\\/:*?"<>|]+', "_", filename)
     sanitized = re.sub(r"\s+", "_", sanitized).strip("._")
     return sanitized or "transcript.md"
+
+
+def _sanitize_path_segment(value: str) -> str:
+    sanitized = re.sub(r'[\\/:*?"<>|]+', "_", value)
+    sanitized = re.sub(r"\s+", "_", sanitized).strip("._")
+    return sanitized or "untitled-topic"
+
+
+def _infer_collected_date_from_path(path: Path) -> str:
+    parent = path.parent
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", parent.name):
+        return parent.name
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", parent.parent.name):
+        return parent.parent.name
+    return ""
 
 
 def _normalize_text(text: str) -> str:

@@ -142,6 +142,9 @@ channel_state:
     assert channel_result.transcript_paths[0].exists()
     assert channel_result.analysis_paths[0].exists()
     assert channel_result.note_paths[0].exists()
+    assert channel_result.transcript_paths[0].parent.name == "我想看_AI_與新創"
+    assert channel_result.analysis_paths[0].parent.name == "我想看_AI_與新創"
+    assert channel_result.note_paths[0].parent.name == "我想看_AI_與新創"
     note_content = channel_result.note_paths[0].read_text(encoding="utf-8")
     assert "等待 transcript-analyst 子 Agent 根據逐字稿完成分析。" in note_content
 

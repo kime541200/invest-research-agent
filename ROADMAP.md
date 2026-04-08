@@ -62,7 +62,7 @@ flowchart TD
 - `yt-mcp-server` 整合
 - 原生字幕抓取
 - 無字幕影片的 STT fallback
-- `notes/YYYY-MM-DD/` Markdown 筆記輸出
+- `notes/YYYY-MM-DD/<topic>/` Markdown 筆記輸出
 - `channel_state` 狀態管理與去重
 - CLI 入口與 smoke test 驗證
 

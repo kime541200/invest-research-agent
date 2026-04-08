@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from invest_research_agent.analysis_artifacts import AnalysisArtifact
@@ -68,9 +69,10 @@ def test_note_generator_writes_markdown_note(tmp_path: Path) -> None:
         ),
     )
 
-    note = generator.write_note(context, output_root=tmp_path)
+    note = generator.write_note(context, output_root=tmp_path, output_date=date(2026, 4, 7))
 
     assert note.path.exists()
+    assert note.path == tmp_path / "2026-04-07" / "AI_商業模式" / "inside6202_AI_公司怎麼賺錢？.md"
     content = note.path.read_text(encoding="utf-8")
     assert "# AI 公司怎麼賺錢？" in content
     assert "- **字幕狀態：** 可用" in content
@@ -127,7 +129,7 @@ def test_note_generator_surfaces_unavailable_analysis_instead_of_transcript_open
         ),
     )
 
-    note = generator.write_note(context, output_root=tmp_path)
+    note = generator.write_note(context, output_root=tmp_path, output_date=date(2026, 4, 7))
     content = note.path.read_text(encoding="utf-8")
 
     assert "等待 transcript-analyst 子 Agent 根據逐字稿完成分析。" in content
