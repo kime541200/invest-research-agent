@@ -6,7 +6,7 @@
 
 ## 產品定位
 
-`invest-research-agent` 的核心不是單純下載 YouTube 影片，而是建立一條可重跑的研究管線：
+`invest-research-agent` 的核心不是單純下載 YouTube 影片，也不是自己做出一個獨立 agent 產品，而是建立一條可重跑、可被現成 coding agent 框架有效利用的研究管線：
 
 1. 依主題路由到合適頻道
 2. 擷取影片內容與字幕
@@ -18,6 +18,25 @@
 - `notes/` 是核心落地層（canonical source）
 - Google Workspace 不作為主資料庫，而是後續的同步層 / 展示層 / 個人資產層
 - Polymarket 不是唯一終點，而是眾多投資機會路線之一
+- 目前研究流程的資料來源先限縮在使用者自行維護的 `resources.yaml`
+- 當 `resources.yaml` 資訊不足時的自主擴充來源能力，屬於未來功能，不是現階段優先項目
+
+### 目前想像的實際使用場景
+
+使用者會以主題或問題驅動方式向 Agent 發出研究請求，例如：
+
+- `幫我研究台股最新熱門族群`
+- `幫我研究最近 AI 技術趨勢`
+- `幫我分析最近熱門話題可能延伸出的投資機會`
+
+現階段預期流程：
+
+1. Agent 先根據使用者問題，從 `resources.yaml` 中挑選最相關的既有 YouTube 頻道
+2. Agent 擷取相關頻道的最新影片內容，取得字幕或透過 STT 產生逐字稿
+3. Agent 將逐字稿整理為 transcript / analysis artifact / note / research artifact 等中繼層
+4. Agent 再根據 research artifact 與 claim-level enrichment，逐步推進到研究摘要、商業理解、熱門主題判讀與潛在投資機會分析
+
+這代表現階段產品的核心，不是「全網自主搜尋資訊」，而是「在使用者定義好的可信來源集合內，建立可重跑、可追溯、可逐步深化的研究流程」。
 
 ## 整體流程圖
 
@@ -121,6 +140,22 @@ flowchart TD
 - note 內容品質
 - keyword / claim extraction 品質
 - external evidence relevance 與排序品質
+- research artifact / claim-level enrichment 與最終 user-facing answer 之間的接合品質
+
+### 最新實測觀察（2026-04-11）
+
+以真實問題「我想要知道最新一集股癌有沒有討論到哪些熱門的投資標的、熱門族群」進行 Gemini CLI 實測後，得到一個很重要的產品結論：
+
+- 目前 `transcript -> analysis artifact -> note -> research artifact -> claim-level enrichment` 這條中繼資料鏈，已經比早期更完整
+- 但最終對使用者輸出的回答，仍然很像「讀完單集筆記後的摘要整理」，而不是明確建立在 claims / evidence / uncertainty 邊界上的研究型輸出
+- 換句話說，目前改善較多的是 machine-readable 中介層，不是最終 answer synthesis 體驗本身
+
+這代表現階段的主要落差，已不只是 artifact 結構夠不夠，而是：
+
+- Agent 最後怎麼根據 research artifact 回答使用者問題
+- 怎麼區分「節目直接提到」與「Agent 推導」
+- 怎麼把 claim、source、evidence、uncertainty 更清楚地呈現在最終回答裡
+- 怎麼讓「熱門族群 / 熱門標的」這類問題的輸出更接近研究結論，而不只是節目摘要
 
 尚未開始的重點：
 
@@ -141,7 +176,7 @@ flowchart TD
 核心判斷：
 
 - 目前專案的主要瓶頸不是「抓不到內容」，而是「研究中繼層品質還不夠穩」
-- 真正需要優化的重心，應放在 `transcript -> analysis artifact -> note` 這條鏈路，而不是先擴更多資料來源或更早進入投資 analyzer
+- 真正需要優化的重心，應放在 `transcript -> analysis artifact -> note -> research artifact -> claim-level enrichment` 這條鏈路，而不是先擴更多資料來源或更早進入投資 analyzer
 - `notes/` 很適合作為 human-readable 的 canonical layer，但後續機器推理不應只直接依賴 Markdown note 本身
 
 重點方向：
@@ -230,7 +265,41 @@ Phase 3 的具體優化原則：
 
 這一層完成後，後續的 `opportunity routing`、Polymarket analyzer、股票 / ETF analyzer 都會有更穩定的輸入邊界。
 
+但根據 2026-04-11 的真實使用測試，僅有 research artifact 與 claim-level enrichment 還不足以直接讓最終回答品質顯著升級；還需要再補一層更明確的 research answer / synthesis layer，才能把中繼資料層的改善轉化成使用者可感知的研究輸出品質。
+
 ## 已明確方向，但尚未實作
+
+### 未來功能：主動擴充資訊來源
+
+這是明確需要存在的能力，但目前不列為眼前優先實作。
+
+目標：當使用者問題超出 `resources.yaml` 已設定的來源範圍時，Agent 可以自主尋找補充來源，並明確附上來源依據與納入理由。
+
+預期能力：
+
+- 判斷目前 `resources.yaml` 是否足以回答使用者問題
+- 在既有來源不足時，搜尋補充的 YouTube 頻道、新聞或文章來源
+- 對每個新來源保留明確 attribution 與選用理由
+- 區分一次性研究來源與應正式納入 `resources.yaml` 的候選來源
+
+目前決策：
+
+- 先不把這項能力整進主流程
+- 先把產品邊界收斂在使用者自行維護的 `resources.yaml`
+- 等既有 research pipeline、research synthesis 與 analyzer 邊界更穩後，再回來做這項能力
+
+### 建議中的下一個能力：research answer / synthesis layer
+
+目標：讓 Agent 最後回覆使用者研究問題時，不只是整理單支影片摘要，而是能基於 claims / evidence / research artifact 形成更研究化的回答。
+
+這一層預期要做到：
+
+- 針對使用者問題挑選真正 relevant 的 claims，而不是平鋪直敘地摘要整集內容
+- 清楚區分「節目直接提到」、「根據節目內容推導」、「仍需進一步驗證」
+- 讓最終回答更明確暴露 source、evidence 與 uncertainty 邊界
+- 讓「熱門標的 / 熱門族群 / 潛在投資機會」這類問題的輸出，更接近研究結論而不只是節目整理
+
+這個能力目前尚未正式實作，但已經由真實測試證明其必要性。
 
 ### Phase 5: 投資機會路由器
 

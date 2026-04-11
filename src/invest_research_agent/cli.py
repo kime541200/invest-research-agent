@@ -11,6 +11,8 @@ from invest_research_agent.external_research import RssResearchProvider
 from invest_research_agent.mcp_client import McpHttpClient
 from invest_research_agent.note_generator import MarkdownNoteGenerator, NoteContext
 from invest_research_agent.orchestrator import CollectorOrchestrator
+from invest_research_agent.research_answers import ResearchAnswerBuilder, ResearchAnswerStore, render_research_answer
+from invest_research_agent.research_artifacts import ResearchArtifactStore
 from invest_research_agent.research_pipeline import ResearchNoteEnricher, write_enrichment_result
 from invest_research_agent.state_store import ResourceStateStore
 from invest_research_agent.stt import SttClient, check_stt_provider, load_stt_settings
@@ -158,6 +160,13 @@ def _build_parser() -> argparse.ArgumentParser:
     render_note.add_argument("--analysis-path", default=None, help="analysis artifact 路徑")
     render_note.add_argument("--json", action="store_true", help="輸出 JSON")
     render_note.set_defaults(handler=_handle_render_note, requires_orchestrator=False)
+
+    synthesize_answer = subparsers.add_parser("synthesize-answer", help="從 research artifact 產生 research answer")
+    synthesize_answer.add_argument("--research-artifact-path", required=True, help="research artifact 路徑")
+    synthesize_answer.add_argument("--question", required=True, help="使用者研究問題")
+    synthesize_answer.add_argument("--output-path", default=None, help="research answer 輸出路徑")
+    synthesize_answer.add_argument("--json", action="store_true", help="輸出 JSON")
+    synthesize_answer.set_defaults(handler=_handle_synthesize_answer, requires_orchestrator=False)
 
     return parser
 
@@ -449,6 +458,31 @@ def _handle_render_note(args: argparse.Namespace, orchestrator: CollectorOrchest
         return
 
     print(f"已產出筆記: {note.path}")
+
+
+def _handle_synthesize_answer(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    del orchestrator
+    artifact = ResearchArtifactStore().read(args.research_artifact_path)
+    store = ResearchAnswerStore()
+    output_path = Path(args.output_path) if args.output_path else store.build_path(
+        artifact=artifact,
+        output_root=_resolve_project_path(Path.cwd(), args.analysis_dir),
+    )
+    answer = ResearchAnswerBuilder().build_from_artifact(
+        question=args.question,
+        artifact=artifact,
+        output_path=output_path,
+    )
+    store.write(answer)
+
+    if args.json:
+        print(answer.path.read_text(encoding="utf-8"))
+        return
+
+    print(render_research_answer(answer))
+    print("")
+    print(f"research answer: {answer.path}")
+    print("下一步：在 Claude / Gemini 中將 research artifact 與這份 answer 交給 `@research-answer-synthesizer`，要求它補強 relevant claim selection、direct mention / inference / needs validation 邊界。")
 
 
 def _resolve_project_path(project_root: Path, target: str) -> Path:

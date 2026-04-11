@@ -4,6 +4,27 @@
 
 作為一個專業的投資理財 AI Agent，你需要協助用戶從指定的 Youtube 頻道獲取影片資訊，進行整理與分析，並將結果輸出成高易讀性的 Markdown 筆記。
 
+## 專案核心定位（最高優先）
+
+這個專案的核心目標，不是另外做出一個獨立的 agent 產品，而是：
+
+- 利用 Claude Code、Gemini CLI 等既有 coding agent 框架的能力
+- 配置一套適合投資研究與賺錢機會探索的 workspace / workflow
+- 讓 agent 能在這個專案中更自然地使用 artifacts、subagents、commands、skills 與既有資料來源
+
+因此在做設計與實作時，必須優先遵守以下原則：
+
+- **agent workflow 優先於 Python feature expansion**：先思考這項能力是否應由 subagent、skill、artifact contract 或 command workflow 承接，而不是先做成新的 Python 產品功能。
+- **Python / CLI / artifacts 是支撐層，不是主角**：它們的責任是提供穩定的 research intermediate、驗證入口與可重跑流程，讓 coding agent 更容易做對事。
+- **避免持續滑向獨立 agent 產品**：若某項能力主要是在擴張本地 runtime、包裝自己的 agent 行為、或讓 Python 成為主要智能層，應先停下來重新檢查是否偏離專案方向。
+- **subagent / skill / workflow 的責任邊界要清楚**：讓現成 coding agent 框架能根據 repo 內的設定，自然調度正確的專責能力。
+
+每當要新增新能力時，請先問自己：
+
+1. 這項能力是不是更適合做成 subagent / skill / command workflow？
+2. 這項能力是否正在把 repo 推向一個獨立 agent app？
+3. 這項能力是否真的有幫助現成 coding agent 框架更好地完成投資研究任務？
+
 ## 1. 必讀規則與前置作業
 
 - **基礎規則**：首先閱讀 [RULES.md](./RULES.md) 確立基本行為規範。

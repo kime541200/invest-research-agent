@@ -7,6 +7,7 @@ from pathlib import Path
 
 from invest_research_agent import cli
 from invest_research_agent.analysis_artifacts import AnalysisArtifact, AnalysisArtifactStore
+from invest_research_agent.research_artifacts import ResearchArtifactStore
 from invest_research_agent.research_models import ResearchEnrichmentResult, ResearchEvidence
 from invest_research_agent.research_models import ResearchNoteSections
 from invest_research_agent.stt import SttHealthStatus
@@ -214,3 +215,65 @@ def test_cli_render_note_uses_ready_analysis_artifact(tmp_path: Path, monkeypatc
     assert note_path == tmp_path / "notes" / "2026-04-07" / "區塊鏈資訊" / "brainbrocrypto_加密貨幣正在超車傳統金融體系.md"
     content = note_path.read_text(encoding="utf-8")
     assert "加密資產正加速與傳統金融接軌。" in content
+
+
+def test_cli_synthesize_answer_outputs_rendered_answer(tmp_path: Path, monkeypatch, capsys) -> None:
+    artifact = ResearchArtifactStore().build_from_analysis_at_path(
+        analysis_artifact=AnalysisArtifact(
+            path=tmp_path / "analysis" / "sample.analysis.json",
+            transcript_path=tmp_path / "sample.transcript.md",
+            title="股癌 EP652",
+            channel="股癌 Gooaye",
+            topic="股癌",
+            status="ready",
+            summary=ResearchNoteSections(
+                key_points=["CPU 與 ASIC 成為新的市場焦點。"],
+                evidence_points=["00:10：節目直接提到 CPU 與 ASIC。"],
+                limitations=["尚未完成具體台股映射。"],
+            ),
+        ),
+        transcript_artifact=TranscriptArtifactWriter().write_artifact(
+            topic="股癌",
+            channel=ChannelConfig(name="股癌 Gooaye", url="https://www.youtube.com/@Gooaye"),
+            video=VideoMetadata(
+                channel_name="股癌 Gooaye",
+                channel_id="UC111",
+                video_id="video111",
+                title="股癌 EP652",
+                url="https://www.youtube.com/watch?v=video111",
+                published_at="2026-04-11T08:00:00Z",
+            ),
+            transcript=TranscriptBundle(
+                video_id="video111",
+                language="zh-TW",
+                merged_full_text="CPU 與 ASIC 成為新的市場焦點。",
+                merged_transcript=[TranscriptSegment(text="CPU 與 ASIC 成為新的市場焦點。", start=0.0, duration=1.0, timestamp="00:10")],
+            ),
+            output_root=tmp_path / "transcripts-answer",
+            output_date=date(2026, 4, 11),
+        ),
+        note_path=tmp_path / "sample.note.md",
+        path=tmp_path / "research" / "sample.research.json",
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "invest-research-agent",
+            "--analysis-dir",
+            str(tmp_path / "analysis-output"),
+            "synthesize-answer",
+            "--research-artifact-path",
+            str(artifact.path),
+            "--question",
+            "最新一集股癌有提到哪些熱門族群？",
+        ],
+    )
+
+    cli.main()
+
+    output = capsys.readouterr().out
+    assert "問題：最新一集股癌有提到哪些熱門族群？" in output
+    assert "直接提到：" in output
+    assert "research answer:" in output

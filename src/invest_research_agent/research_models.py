@@ -53,3 +53,27 @@ class ResearchEnrichmentResult:
     note_title: str
     keywords: list[str] = field(default_factory=list)
     evidence: list[ResearchEvidence] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ResearchAnswerPoint:
+    claim: str
+    evidence: list[str] = field(default_factory=list)
+    reasoning: str = ""
+    reason: str = ""
+
+
+@dataclass(frozen=True)
+class ResearchAnswer:
+    path: Path
+    question: str
+    research_artifact_path: Path
+    title: str
+    channel: str
+    topic: str
+    summary_answer: str = ""
+    direct_mentions: list[ResearchAnswerPoint] = field(default_factory=list)
+    inferred_points: list[ResearchAnswerPoint] = field(default_factory=list)
+    needs_validation: list[ResearchAnswerPoint] = field(default_factory=list)
+    citations: list[str] = field(default_factory=list)
+    notes: str = ""
