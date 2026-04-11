@@ -36,6 +36,7 @@ class MarkdownNoteGenerator:
             f"- **字幕狀態：** {_get_transcript_status_label(context.transcript)}",
             f"- **字幕來源：** {_get_transcript_source_label(context.transcript)}",
             f"- **字幕語言：** {_get_transcript_language_label(context.transcript)}",
+            f"- **分析狀態：** {_get_analysis_status_label(context.analysis_artifact)}",
             "",
         ]
 
@@ -193,6 +194,14 @@ def _build_transcript_unavailable_message(transcript: TranscriptBundle | None) -
         return "目前沒有可用逐字稿。"
     reason = _get_transcript_reason_text(transcript)
     return f"目前沒有可用逐字稿，原因：{reason}"
+
+
+def _get_analysis_status_label(analysis_artifact: AnalysisArtifact | None) -> str:
+    if analysis_artifact is None:
+        return "未提供"
+    if analysis_artifact.status == "ready":
+        return f"可用（來源：{analysis_artifact.source_of_truth}）"
+    return f"{analysis_artifact.status}（來源：{analysis_artifact.source_of_truth}）"
 
 
 def _normalize_text(text: str) -> str:

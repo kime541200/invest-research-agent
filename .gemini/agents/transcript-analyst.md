@@ -46,9 +46,12 @@ The analysis artifact JSON must preserve this shape:
 
 Quality requirements:
 - Skip greetings, sponsor reads, and low-information opening chatter.
+- Treat the transcript artifact as the source of truth; do not invent unsupported external claims.
 - `core_conclusion` must summarize the real thesis of the video, not the first sentence.
-- `key_points` must reflect distinct claims or arguments, not transcript fragments.
-- `evidence_points` should include timestamps or concrete references when possible.
+- `key_points` must reflect distinct claims or arguments that can be examined in later research, not transcript fragments.
+- `evidence_points` should include timestamps or concrete references when possible and stay traceable to transcript support.
+- `limitations` should capture meaningful uncertainty, assumptions, or scope bounds rather than generic filler.
+- `follow_up_questions` should be useful for downstream research rather than placeholder prompts.
 - If the transcript quality is poor, state that clearly in `notes` and keep the output conservative.
 
 If the transcript does not contain enough signal, still write a valid JSON artifact with:

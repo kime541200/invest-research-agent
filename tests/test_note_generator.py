@@ -78,6 +78,7 @@ def test_note_generator_writes_markdown_note(tmp_path: Path) -> None:
     assert "- **字幕狀態：** 可用" in content
     assert "- **字幕來源：** 原生字幕" in content
     assert "- **字幕語言：** zh-TW" in content
+    assert "- **分析狀態：** 可用（來源：transcript_artifact）" in content
     assert "## 📝 核心結論" in content
     assert "AI 公司常見營收模式可分為訂閱制、服務制與混合型模式。" in content
     assert "## 📌 重點拆解" in content
@@ -133,4 +134,6 @@ def test_note_generator_surfaces_unavailable_analysis_instead_of_transcript_open
     content = note.path.read_text(encoding="utf-8")
 
     assert "等待 transcript-analyst 子 Agent 根據逐字稿完成分析。" in content
+    assert "- **分析狀態：** pending（來源：transcript_artifact）" in content
+    assert "分析結果尚未可用，當前 note 不應被視為已完成的研究結論。" in content
     assert "## 📌 重點拆解\n- 待補" in content

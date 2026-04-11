@@ -17,6 +17,7 @@ class AnalysisArtifact:
     topic: str
     status: str = "pending"
     agent: str = ""
+    source_of_truth: str = "transcript_artifact"
     summary: ResearchNoteSections = field(default_factory=ResearchNoteSections)
     notes: str = ""
 
@@ -51,7 +52,8 @@ class AnalysisArtifactStore:
             topic=transcript_artifact.topic,
             status="pending",
             agent="transcript-analyst",
-            notes="等待 transcript-analyst 子 Agent 根據逐字稿完成分析。",
+            source_of_truth="transcript_artifact",
+            notes="等待 transcript-analyst 子 Agent 根據逐字稿完成分析；analysis artifact 僅代表 transcript-derived analysis，尚非外部驗證結論。",
         )
         self.write(artifact)
         return artifact
@@ -75,6 +77,7 @@ class AnalysisArtifactStore:
             topic=payload.get("topic", ""),
             status=payload.get("status", "pending"),
             agent=payload.get("agent", ""),
+            source_of_truth=payload.get("source_of_truth", "transcript_artifact"),
             summary=summary,
             notes=payload.get("notes", ""),
         )
@@ -89,7 +92,7 @@ def build_unavailable_analysis_sections(analysis_artifact: AnalysisArtifact | No
         key_points=[],
         answered_questions=[],
         evidence_points=[],
-        limitations=["分析結果尚未可用。"],
+        limitations=["分析結果尚未可用，當前 note 不應被視為已完成的研究結論。"],
         follow_up_questions=["完成 analysis artifact 後再產出正式研究重點。"],
     )
 

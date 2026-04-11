@@ -146,7 +146,8 @@ channel_state:
     assert channel_result.analysis_paths[0].parent.name == "我想看_AI_與新創"
     assert channel_result.note_paths[0].parent.name == "我想看_AI_與新創"
     note_content = channel_result.note_paths[0].read_text(encoding="utf-8")
-    assert "等待 transcript-analyst 子 Agent 根據逐字稿完成分析。" in note_content
+    assert "analysis artifact 僅代表 transcript-derived analysis，尚非外部驗證結論。" in note_content
+    assert "分析結果尚未可用，當前 note 不應被視為已完成的研究結論。" in note_content
 
     reloaded = ResourceStateStore(resource_file).get_channel("inside6202")
     assert reloaded is not None

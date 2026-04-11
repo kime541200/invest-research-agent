@@ -134,9 +134,15 @@ flowchart TD
 
 ### Phase 3: 研究筆記升級
 
-目前狀態：研究筆記 `v1` 結構已完成。
+目前狀態：研究筆記 `v1` 結構已完成，但目前的 note 仍偏向「有固定骨架的整理輸出」，真正的內容品質仍高度依賴 transcript 與 analysis artifact 的品質。
 
 下一步目標：把目前已經有骨架的研究筆記，提升成更適合後續推理與投資研究的高品質中繼筆記。
+
+核心判斷：
+
+- 目前專案的主要瓶頸不是「抓不到內容」，而是「研究中繼層品質還不夠穩」
+- 真正需要優化的重心，應放在 `transcript -> analysis artifact -> note` 這條鏈路，而不是先擴更多資料來源或更早進入投資 analyzer
+- `notes/` 很適合作為 human-readable 的 canonical layer，但後續機器推理不應只直接依賴 Markdown note 本身
 
 重點方向：
 
@@ -144,17 +150,31 @@ flowchart TD
 - 將 `重點拆解` 做得更接近論點層次，而不是逐字稿片段重排
 - 提升 `重要依據 / 數據 / 例子` 與實際 claim 的對齊程度
 - 把 `限制條件 / 前提`、`後續追蹤方向` 從 placeholder 升級成真正可用的研究欄位
+- 讓 note 更明確扮演「高品質研究筆記輸出層」，而不是摘要骨架本身
 
 預期成果：
 
 - `notes/` 中的 Markdown 不只是 raw transcript 附帶摘要，而是可供 Agent 後續研究的結構化材料
 - 研究筆記內容品質足以承接後續的外部 research 與 opportunity routing
+- note 內容會更穩定地反映 analysis artifact 的 thesis、claims、evidence、assumptions 與 open questions
+
+Phase 3 的具體優化原則：
+
+- 優先提升 analysis artifact 品質，再讓 note generator 吃到更好的中繼資料
+- 不把重型研究品質提升直接塞回 `collect_from_topic()` 熱路徑
+- 保持 collect pipeline 可重跑、低風險、穩定；把重分析能力放在後處理流程
 
 ### Phase 4: 外部研究層
 
-目前狀態：外部研究 `v0` 流程已完成，包含獨立 enrichment pipeline、RSS provider abstraction 與 CLI 入口。
+目前狀態：外部研究 `v0` 流程已完成，包含獨立 enrichment pipeline、RSS provider abstraction 與 CLI 入口；但目前 enrichment 還偏向 note-level keyword search，而不是 claim-level evidence mapping。
 
 下一步目標：提升外部 research 的資料品質與映射能力，讓 enrichment 結果更適合承接後續決策。
+
+核心判斷：
+
+- 現階段 enrichment 若只靠整篇 note 的 keyword，容易出現 evidence 與實際論點對不上的問題
+- 下一步應逐漸把 enrichment 單位從 note-level 提升到 claim-level
+- 長期應建立 `claim -> keyword set -> external evidence` 的穩定映射，而不是只做整篇筆記的主題搜尋
 
 重點方向：
 
@@ -163,15 +183,52 @@ flowchart TD
 - 擴充可替換的外部資料 provider abstraction
 - 建立 note / claim / evidence 的對應關係
 - 定義 enrichment 結果如何回寫或附加到研究產物
+- 將 `support / contradiction / context` 等 evidence 關係視為後續可擴充方向
 
 第一階段建議優先：
 
 - RSS / 正式新聞 API
 - 專家評論或公開文章來源
+- 先從 claim-level enrichment 的最小版本做起，而不是一次做完整知識圖譜
 
 暫不建議預設：
 
 - 直接爬一般 Google 搜尋頁面
+- 一開始就把整個 enrichment 做成重量級多跳推理系統
+
+### Phase 4.5: Research artifact 中介層
+
+目標：在 transcript / analysis / note / enrichment 之間，建立一層更正式的 research artifact，作為後續 opportunity routing 與 analyzer 的穩定輸入。
+
+為什麼要做：
+
+- transcript 太原始
+- Markdown note 偏向 human-readable，不適合作為唯一機器輸入
+- analysis artifact 與 enrichment result 目前已經是好的基礎，但彼此關係還不夠正式
+
+建議方向：
+
+- 建立一個以 claim 為核心的 research artifact shape
+- 讓它能整合：
+  - video / topic metadata
+  - analysis artifact 的 claims / conclusion
+  - video 內部 evidence
+  - 外部 evidence
+  - open questions / next actions
+- 讓後續 analyzer 優先讀 artifact JSON，而不是直接 parse Markdown note
+
+最小可行版本可包含：
+
+- `note_path`
+- `transcript_path`
+- `topic`
+- `title`
+- `channel`
+- `claims[]`
+- `overall_risks[]`
+- `next_actions[]`
+
+這一層完成後，後續的 `opportunity routing`、Polymarket analyzer、股票 / ETF analyzer 都會有更穩定的輸入邊界。
 
 ## 已明確方向，但尚未實作
 
@@ -339,16 +396,21 @@ Polymarket 是重要路線之一，但不是唯一目標。
 
 ### P1
 
+- 提升 analysis artifact 品質，讓 `core_conclusion`、`key_points`、`evidence_points` 更接近 thesis / claims / supporting evidence
 - 提升研究筆記內容品質
 - 改善 keyword / claim extraction
+- 把 enrichment 從 note-level keyword search 逐步升級為 claim-level enrichment
 - 強化 RSS / 外部資料 evidence 品質與排序
 - 讓 research artifacts 更適合作為後續 analyzer 的輸入
+- 建立一小組代表性影片的人工評測集，用來評估 note / claim / evidence 品質是否真的提升
 
 ### P2
 
 - 定義更正式的 claim / evidence / research artifact 流程
+- 建立 `research artifact v1` 的最小穩定 schema
 - 規劃 opportunity routing 的輸入介面
 - 為後續 Polymarket 與股票 / ETF 路線建立穩定邊界
+- 明確區分 human-readable note 與 machine-readable artifact 的責任
 
 ### P3
 

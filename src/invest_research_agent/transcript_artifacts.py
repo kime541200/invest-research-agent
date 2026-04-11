@@ -151,6 +151,10 @@ def artifact_to_note_context_data(artifact: TranscriptArtifact) -> tuple[Channel
     return channel, video, transcript
 
 
+def read_transcript_artifact_for_analysis(path: Path | str) -> TranscriptArtifact:
+    return read_transcript_artifact(path)
+
+
 def _build_markdown_artifact(artifact: TranscriptArtifact) -> str:
     lines = [
         f"# {artifact.title}",
