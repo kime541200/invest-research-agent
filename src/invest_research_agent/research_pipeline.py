@@ -7,7 +7,7 @@ from pathlib import Path
 from invest_research_agent.analysis_artifacts import AnalysisArtifact
 from invest_research_agent.external_research import ExternalResearchProvider
 from invest_research_agent.note_parser import extract_note_keywords, parse_markdown_note
-from invest_research_agent.research_artifacts import ResearchArtifact, ResearchArtifactStore
+from invest_research_agent.research_artifacts import ResearchArtifact, ResearchArtifactClaim, ResearchArtifactStore
 from invest_research_agent.research_models import ResearchEnrichmentResult
 from invest_research_agent.transcript_artifacts import read_transcript_artifact_for_analysis
 
@@ -62,6 +62,58 @@ class ResearchArtifactBuilder:
             note_path=note_path,
             output_root=output_root,
         )
+
+
+class ClaimEnrichmentBuilder:
+    def __init__(self, provider: ExternalResearchProvider, store: ResearchArtifactStore | None = None) -> None:
+        self.provider = provider
+        self.store = store or ResearchArtifactStore()
+
+    def enrich_artifact(self, artifact: ResearchArtifact, limit: int = 5) -> ResearchArtifact:
+        claims = [self._enrich_claim(claim=claim, artifact=artifact, limit=limit) for claim in artifact.claims]
+        enriched = ResearchArtifact(
+            path=artifact.path,
+            transcript_path=artifact.transcript_path,
+            analysis_path=artifact.analysis_path,
+            note_path=artifact.note_path,
+            title=artifact.title,
+            channel=artifact.channel,
+            topic=artifact.topic,
+            source_of_truth=artifact.source_of_truth,
+            claims=claims,
+            overall_risks=list(artifact.overall_risks),
+            next_actions=list(artifact.next_actions),
+        )
+        self.store.write(enriched)
+        return enriched
+
+    def _enrich_claim(self, *, claim: ResearchArtifactClaim, artifact: ResearchArtifact, limit: int) -> ResearchArtifactClaim:
+        keywords = claim.keywords or generate_claim_keywords(claim.text, artifact=artifact)
+        evidence = self.provider.search(keywords, limit=limit)
+        return ResearchArtifactClaim(
+            text=claim.text,
+            keywords=keywords,
+            evidence_points=list(claim.evidence_points),
+            limitations=list(claim.limitations),
+            external_evidence=evidence,
+        )
+
+
+def generate_claim_keywords(claim_text: str, *, artifact: ResearchArtifact, max_keywords: int = 6) -> list[str]:
+    candidates = [claim_text.strip(), artifact.topic.strip(), artifact.channel.strip(), artifact.title.strip()]
+    seen: set[str] = set()
+    keywords: list[str] = []
+    for candidate in candidates:
+        if not candidate:
+            continue
+        normalized = candidate.casefold()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        keywords.append(candidate)
+        if len(keywords) >= max_keywords:
+            break
+    return keywords
 
 
 def write_enrichment_result(

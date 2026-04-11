@@ -8,7 +8,7 @@ from invest_research_agent.research_artifacts import (
     ResearchArtifactClaim,
     ResearchArtifactStore,
 )
-from invest_research_agent.research_models import ResearchNoteSections
+from invest_research_agent.research_models import ResearchEvidence, ResearchNoteSections
 from invest_research_agent.transcript_artifacts import TranscriptArtifact
 from invest_research_agent.models import TranscriptSegment
 
@@ -26,8 +26,19 @@ def test_research_artifact_store_roundtrip_preserves_upstream_references(tmp_pat
         claims=[
             ResearchArtifactClaim(
                 text="AI 公司更適合可重複收入模式。",
+                keywords=["AI 公司", "可重複收入"],
                 evidence_points=["00:42：影片直接比較一次性專案與訂閱收入。"],
                 limitations=["未涵蓋市場逆風時期。"],
+                external_evidence=[
+                    ResearchEvidence(
+                        title="SaaS retention benchmarks",
+                        source="Example Feed",
+                        summary="Retention 與 recurring revenue 關係。",
+                        url="https://example.com/retention",
+                        published_at="2026-04-10",
+                        score=3.0,
+                    )
+                ],
             )
         ],
         overall_risks=["影片只聚焦單一商業模式。"],
@@ -42,6 +53,8 @@ def test_research_artifact_store_roundtrip_preserves_upstream_references(tmp_pat
     assert loaded.note_path == artifact.note_path
     assert loaded.source_of_truth == "analysis_artifact"
     assert loaded.claims[0].text == "AI 公司更適合可重複收入模式。"
+    assert loaded.claims[0].keywords == ["AI 公司", "可重複收入"]
+    assert loaded.claims[0].external_evidence[0].title == "SaaS retention benchmarks"
     assert loaded.overall_risks == ["影片只聚焦單一商業模式。"]
 
 

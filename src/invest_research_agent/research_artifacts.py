@@ -5,15 +5,17 @@ import json
 from pathlib import Path
 
 from invest_research_agent.analysis_artifacts import AnalysisArtifact
-from invest_research_agent.research_models import ResearchNoteSections
+from invest_research_agent.research_models import ResearchEvidence, ResearchNoteSections
 from invest_research_agent.transcript_artifacts import TranscriptArtifact
 
 
 @dataclass(frozen=True)
 class ResearchArtifactClaim:
     text: str
+    keywords: list[str] = field(default_factory=list)
     evidence_points: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
+    external_evidence: list[ResearchEvidence] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -97,7 +99,16 @@ class ResearchArtifactStore:
 
     def read(self, path: Path | str) -> ResearchArtifact:
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
-        claims = [ResearchArtifactClaim(**item) for item in payload.get("claims", [])]
+        claims = [
+            ResearchArtifactClaim(
+                text=item.get("text", ""),
+                keywords=item.get("keywords", []),
+                evidence_points=item.get("evidence_points", []),
+                limitations=item.get("limitations", []),
+                external_evidence=[ResearchEvidence(**evidence) for evidence in item.get("external_evidence", [])],
+            )
+            for item in payload.get("claims", [])
+        ]
         return ResearchArtifact(
             path=Path(payload["path"]),
             transcript_path=Path(payload["transcript_path"]),
