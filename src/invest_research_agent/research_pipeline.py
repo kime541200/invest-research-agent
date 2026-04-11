@@ -4,9 +4,12 @@ from dataclasses import asdict
 import json
 from pathlib import Path
 
+from invest_research_agent.analysis_artifacts import AnalysisArtifact
 from invest_research_agent.external_research import ExternalResearchProvider
 from invest_research_agent.note_parser import extract_note_keywords, parse_markdown_note
+from invest_research_agent.research_artifacts import ResearchArtifact, ResearchArtifactStore
 from invest_research_agent.research_models import ResearchEnrichmentResult
+from invest_research_agent.transcript_artifacts import read_transcript_artifact_for_analysis
 
 
 class ResearchNoteEnricher:
@@ -39,6 +42,26 @@ class ResearchNoteEnricher:
             self.enrich_note(note_path, keywords=keywords, limit=limit)
             for note_path in note_paths
         ]
+
+
+class ResearchArtifactBuilder:
+    def __init__(self, store: ResearchArtifactStore | None = None) -> None:
+        self.store = store or ResearchArtifactStore()
+
+    def build_from_paths(
+        self,
+        *,
+        analysis_artifact: AnalysisArtifact,
+        note_path: Path | str,
+        output_root: Path | str,
+    ) -> ResearchArtifact:
+        transcript_artifact = read_transcript_artifact_for_analysis(analysis_artifact.transcript_path)
+        return self.store.build_from_analysis(
+            analysis_artifact=analysis_artifact,
+            transcript_artifact=transcript_artifact,
+            note_path=note_path,
+            output_root=output_root,
+        )
 
 
 def write_enrichment_result(
