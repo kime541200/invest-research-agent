@@ -275,5 +275,6 @@ def test_cli_synthesize_answer_outputs_rendered_answer(tmp_path: Path, monkeypat
 
     output = capsys.readouterr().out
     assert "問題：最新一集股癌有提到哪些熱門族群？" in output
-    assert "直接提到：" in output
+    assert "結論：（無明確結論）" in output
     assert "research answer:" in output
+    assert "由它負責 relevant claim selection" in output

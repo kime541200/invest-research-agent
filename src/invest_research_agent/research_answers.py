@@ -41,35 +41,13 @@ class ResearchAnswerStore:
 
 
 class ResearchAnswerBuilder:
-    def build_from_artifact(
+    def build_stub(
         self,
         *,
         question: str,
         artifact: ResearchArtifact,
         output_path: Path | str,
     ) -> ResearchAnswer:
-        direct_mentions = [
-            ResearchAnswerPoint(claim=claim.text, evidence=list(claim.evidence_points))
-            for claim in artifact.claims
-        ]
-        inferred_points = [
-            ResearchAnswerPoint(
-                claim=claim.text,
-                reasoning="這個論點來自 research artifact 整理，仍需依具體問題判斷是否構成可執行結論。",
-            )
-            for claim in artifact.claims
-            if claim.external_evidence
-        ]
-        needs_validation = [
-            ResearchAnswerPoint(
-                claim=claim.text,
-                reason="仍缺少足夠外部驗證或更明確的投資映射。",
-            )
-            for claim in artifact.claims
-            if claim.limitations or not claim.external_evidence
-        ]
-        summary_answer = "；".join(point.claim for point in direct_mentions[:3])
-        citations = [f"{artifact.channel} / {artifact.title}"]
         return ResearchAnswer(
             path=Path(output_path),
             question=question,
@@ -77,11 +55,12 @@ class ResearchAnswerBuilder:
             title=artifact.title,
             channel=artifact.channel,
             topic=artifact.topic,
-            summary_answer=summary_answer,
-            direct_mentions=direct_mentions,
-            inferred_points=inferred_points,
-            needs_validation=needs_validation,
-            citations=citations,
+            summary_answer="",
+            direct_mentions=[],
+            inferred_points=[],
+            needs_validation=[],
+            citations=[f"{artifact.channel} / {artifact.title}"],
+            notes="等待 research-answer-synthesizer 根據使用者問題完成主要 synthesis judgment。",
         )
 
 

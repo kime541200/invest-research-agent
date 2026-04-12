@@ -301,6 +301,17 @@ Phase 3 的具體優化原則：
 
 這個能力目前尚未正式實作，但已經由真實測試證明其必要性。
 
+### 最新方向稽核結論（2026-04-12）
+
+完成一次針對專案定位的稽核後，目前可以確認：
+
+- repo 整體仍對齊「為 Claude Code / Gemini CLI 等 coding agent 提供投資研究 workflow」的核心方向
+- 目前最需要修正的不是產品邊界擴張，而是 answer synthesis 這一層的 ownership 還不夠乾淨
+- `research-answer-synthesizer` 應成為主要的 synthesis layer，負責根據使用者問題挑選 relevant claims，並區分 direct mention / inferred point / needs validation
+- Python / CLI 應退回 deterministic support layer，主要負責 research artifact 讀取、output path、answer JSON persistence 與 rendering，而不是繼續扮演主要 synthesis intelligence
+
+因此下一個聚焦修正，不是新增更大的能力，而是把 research answer workflow 從「Python 先生成、subagent 再補強」收斂成更明確的 `agent-first answer synthesis workflow`。
+
 ### Phase 5: 投資機會路由器
 
 目標：不要把最終分析終點綁死在 Polymarket，而是先判斷哪一種投資路線最適合承接該論點。

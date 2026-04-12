@@ -161,7 +161,7 @@ def _build_parser() -> argparse.ArgumentParser:
     render_note.add_argument("--json", action="store_true", help="輸出 JSON")
     render_note.set_defaults(handler=_handle_render_note, requires_orchestrator=False)
 
-    synthesize_answer = subparsers.add_parser("synthesize-answer", help="從 research artifact 產生 research answer")
+    synthesize_answer = subparsers.add_parser("synthesize-answer", help="為 agent-first answer synthesis 準備 research answer workflow")
     synthesize_answer.add_argument("--research-artifact-path", required=True, help="research artifact 路徑")
     synthesize_answer.add_argument("--question", required=True, help="使用者研究問題")
     synthesize_answer.add_argument("--output-path", default=None, help="research answer 輸出路徑")
@@ -468,7 +468,7 @@ def _handle_synthesize_answer(args: argparse.Namespace, orchestrator: CollectorO
         artifact=artifact,
         output_root=_resolve_project_path(Path.cwd(), args.analysis_dir),
     )
-    answer = ResearchAnswerBuilder().build_from_artifact(
+    answer = ResearchAnswerBuilder().build_stub(
         question=args.question,
         artifact=artifact,
         output_path=output_path,
@@ -482,7 +482,7 @@ def _handle_synthesize_answer(args: argparse.Namespace, orchestrator: CollectorO
     print(render_research_answer(answer))
     print("")
     print(f"research answer: {answer.path}")
-    print("下一步：在 Claude / Gemini 中將 research artifact 與這份 answer 交給 `@research-answer-synthesizer`，要求它補強 relevant claim selection、direct mention / inference / needs validation 邊界。")
+    print("下一步：將 research artifact 與這份 answer 交給 `@research-answer-synthesizer`，由它負責 relevant claim selection，以及 direct mention / inference / needs validation 的主要判斷；Python / CLI 這裡只負責準備 output path、answer JSON 與後續 rendering。")
 
 
 def _resolve_project_path(project_root: Path, target: str) -> Path:
