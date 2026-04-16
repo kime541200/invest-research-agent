@@ -59,7 +59,11 @@ class ResearchAnswerBuilder:
             direct_mentions=[],
             inferred_points=[],
             needs_validation=[],
-            citations=[f"{artifact.channel} / {artifact.title}"],
+            citations=[
+                f"{artifact.channel} / {artifact.title}",
+                f"topic={artifact.topic}",
+                f"artifact={artifact.path.name}",
+            ],
             notes="等待 research-answer-synthesizer 根據使用者問題完成主要 synthesis judgment。",
         )
 

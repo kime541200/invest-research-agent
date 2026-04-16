@@ -31,6 +31,7 @@
 - **前置配置**：參考 [docs/pre-required.md](./docs/pre-required.md) 進行相關環境的配置與檢查（包含 MCP Server 架設狀態等確認）。
 - **MCP 設定文件選擇**：MCP 設定格式依 Agent/客戶端而異，請先查閱 `docs/mcp-config/` 下對應環境的說明；若無對應文件，先搜尋現有設定與既有配置，仍無法確認時再請用戶提供。若只是想直接驗證或從 shell 呼叫 MCP，可優先參考 `docs/mcp-config/mcporter.md`。
 - **Python 執行方式**：若要執行根專案 Python 指令，先使用 `source .venv/bin/activate` 啟動虛擬環境；若 `.venv` 尚未建立，使用 `uv venv` 與 `uv pip install -e ".[dev]"` 初始化。
+- **Gemini CLI 測試方式**：若需要做真實 workflow 驗證或 cross-check，可直接使用 `gemini` 啟動 Gemini CLI；可用 `gemini -p "<prompt>"` 直接送提示詞，若希望測試流程中不要停下來逐步確認，可使用 `gemini --yolo`。需要查看更多操作時，優先用 `gemini --help`；若需要查官方說明或 repo 脈絡，可透過 `/gh-cli` 查看 `google-gemini/gemini-cli`。
 
 ## 2. 標準工作流程
 
@@ -134,6 +135,18 @@
 - 若需要檢查追蹤層級，可使用：
   - `python -m invest_research_agent list-channels --watch-tier core`
   - `python -m invest_research_agent list-channels --watch-tier normal`
+- 若需要驗證 answer synthesis workflow，優先用一組已完成 analysis artifact 的真實案例做 end-to-end 測試：
+  - 先建立 research artifact
+  - 再用 `python -m invest_research_agent ... synthesize-answer` 產生 answer stub
+  - 再用 Gemini CLI / `gemini -p "..."` 讓 `research-answer-synthesizer` 完成主要 synthesis judgment
+- 每次 answer synthesis 驗證至少檢查：
+  - JSON shape 是否符合 answer contract
+  - `summary_answer` 是否直接回答問題
+  - `direct_mentions` 是否真的聚焦最 relevant claims
+  - `evidence` 是否保留 timestamp 或具體依據
+  - `inferred_points` 是否過度延伸
+  - `needs_validation` 是否對應可追蹤的後續問題
+  - `citations` 是否足夠可辨識
 
 ## 5. 目前產品邊界
 

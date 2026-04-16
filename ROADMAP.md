@@ -335,6 +335,26 @@ Phase 3 的具體優化原則：
 - 再交給對應的 analyzer
 - 不要預設所有觀點都一定能落到 Polymarket
 
+目前建議中的最小 routing input 邊界：
+
+- 上游輸入先以 `ResearchAnswer` 為主，而不是直接從 Markdown note 或 transcript 做路由
+- routing 優先讀取以下欄位：
+  - `summary_answer`：目前最終研究結論與主線摘要
+  - `direct_mentions`：影片或來源中明確提到的可追蹤訊號
+  - `inferred_points`：由研究 answer layer 推導出的可能主線或機會方向
+  - `needs_validation`：尚未足以路由、但值得繼續追蹤的項目
+- 一份 answer 至少要有下列其中一種訊號，才視為「可進 routing」：
+  - 明確可追蹤的產業 / 政策 / 技術主線
+  - 可對應到具體市場、資產類別或事件類型的 inferred point
+  - 能明確判斷為僅具研究價值而不形成可交易機會
+- 初步判斷建議：
+  - `prediction_market`：重點在可被事件化、可對應二元或條件式 outcome 的論點
+  - `us_equity`：重點在可連到美股公司、ETF、產業 proxy 的主線
+  - `tw_equity`：重點在可連到台股公司、ETF、概念股的主線
+  - `macro_only`：有研究價值，但目前只形成總經 / 產業 / 政策觀察，還沒有清楚可交易標的
+  - `no_trade`：內容不足、訊號太弱、或主要結論仍停留在待驗證，尚不形成投資機會
+- `needs_validation` 不能直接當可交易機會本身，但可以作為 routing 後續的 follow-up queue
+
 ### Phase 6: Polymarket 路線
 
 Polymarket 是重要路線之一，但不是唯一目標。

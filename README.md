@@ -316,6 +316,53 @@ python -m invest_research_agent render-note \
 
 - `.gemini/agents/transcript-analyst.md`
 
+### Research artifact -> Answer synthesis 驗證
+
+若要驗證 `agent-first answer synthesis workflow`，建議使用一組已經完成 `analysis artifact` 的真實案例，依序執行：
+
+```bash
+source .venv/bin/activate
+
+# 1. 先把 ready 的 analysis artifact 組成 research artifact
+python - <<'PY'
+from pathlib import Path
+from invest_research_agent.analysis_artifacts import AnalysisArtifactStore
+from invest_research_agent.research_pipeline import ResearchArtifactBuilder
+
+root = Path('.').resolve()
+analysis_path = root / 'analysis/2026-04-05/brainbrocrypto_加密貨幣正在超車傳統金融體系｜幣圈週報.analysis.json'
+note_path = root / 'notes/2026-04-05/brainbrocrypto_加密貨幣正在超車傳統金融體系｜幣圈週報.md'
+analysis_artifact = AnalysisArtifactStore().read(analysis_path)
+artifact = ResearchArtifactBuilder().build_from_paths(
+    analysis_artifact=analysis_artifact,
+    note_path=note_path,
+    output_root=root / 'analysis',
+)
+print(artifact.path)
+PY
+
+# 2. 產生 answer stub（這一步只做 deterministic support，不做主要 judgment）
+python -m invest_research_agent --analysis-dir analysis synthesize-answer \
+  --research-artifact-path "analysis/2026-04-05/區塊鏈/brainbrocrypto_加密貨幣正在超車傳統金融體系｜幣圈週報.research.json" \
+  --question "如果我要追蹤這支影片裡最值得持續關注的 3 個訊號，應該優先看哪 3 個？" \
+  --json
+
+# 3. 用 Gemini CLI 做真實 synthesis
+#    - 嚴格要求輸出 JSON
+#    - direct_mentions / inferred_points / needs_validation 必須維持 object array shape
+#    - summary_answer 必須直接回答使用者問題
+```
+
+建議每次驗證都固定檢查：
+
+- JSON shape 是否正確
+- `summary_answer` 是否直接回答問題而非整集摘要
+- `direct_mentions` 是否真的只選最 relevant 的 2-4 個訊號
+- `evidence` 是否保留 timestamp 或具體依據
+- `inferred_points` 是否過度擴張成宏觀敘事
+- `needs_validation` 是否對應可追蹤的後續項目
+- `citations` 是否至少比單純 channel/title 更具辨識度
+
 ## STT Provider
 
 若要讓沒有原生字幕的影片也能進入分析流程，目前可配置一個 STT provider。

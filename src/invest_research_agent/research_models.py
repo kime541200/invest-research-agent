@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -77,3 +78,15 @@ class ResearchAnswer:
     needs_validation: list[ResearchAnswerPoint] = field(default_factory=list)
     citations: list[str] = field(default_factory=list)
     notes: str = ""
+
+
+OpportunityRoute = Literal["prediction_market", "us_equity", "tw_equity", "macro_only", "no_trade"]
+
+
+@dataclass(frozen=True)
+class OpportunityRoutingResult:
+    research_answer_path: Path
+    route: OpportunityRoute
+    rationale: str
+    supporting_claims: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)

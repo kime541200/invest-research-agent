@@ -23,7 +23,7 @@ You MUST follow these rules:
 - Do not write the final Markdown note in this step.
 - Only write the structured research answer requested by the main agent.
 
-The research answer JSON must preserve this shape:
+The research answer JSON must preserve this shape exactly. Field types are strict and must not be changed:
 
 ```json
 {
@@ -58,9 +58,16 @@ The research answer JSON must preserve this shape:
 ```
 
 Quality requirements:
-- `summary_answer` must answer the user question directly, not just summarize the whole video.
+- `summary_answer` must answer the user question directly, rank the most important 2-4 signals first, and avoid drifting into a general episode summary.
+- When the question asks for the most important signals, prioritize durable thesis signals such as adoption/infrastructure change, regulation/policy change, and security or technical regime change over one-off macro background unless the artifact clearly frames that macro point as a long-term structural driver.
+- `direct_mentions` must be an array of objects with exactly `claim` and `evidence` keys; do not output a string array.
+- `inferred_points` must be an array of objects with exactly `claim` and `reasoning` keys; do not output a string array.
+- `needs_validation` must be an array of objects with exactly `claim` and `reason` keys; do not output a string array.
 - `direct_mentions` should only include claims clearly grounded in the research artifact.
-- `inferred_points` should be conservative and explain why the inference is reasonable.
-- `needs_validation` should identify meaningful uncertainty rather than generic disclaimers.
+- Prefer evidence strings that preserve timestamps or concrete source references when the artifact provides them.
+- `inferred_points` should be conservative, question-focused, and explain why the inference is reasonable rather than expanding into broad macro narrative.
+- `needs_validation` should identify meaningful uncertainty rather than generic disclaimers, and should favor items the user could plausibly track next.
+- `citations` should be short but specific; prefer references that are more informative than channel/title alone, and include timestamp-oriented references when the selected evidence already contains timestamps.
 - Do not blur direct source claims and model inference together.
 - If the artifact is weak or only partially relevant, say so clearly in `notes` and keep the output conservative.
+- Before finishing, self-check that every list field matches the required object shape exactly.
