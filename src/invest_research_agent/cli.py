@@ -11,8 +11,10 @@ from invest_research_agent.external_research import RssResearchProvider
 from invest_research_agent.mcp_client import McpHttpClient
 from invest_research_agent.note_generator import MarkdownNoteGenerator, NoteContext
 from invest_research_agent.orchestrator import CollectorOrchestrator
+from invest_research_agent.prediction_market_analyzer import PredictionMarketAnalyzer, render_prediction_market_analysis
 from invest_research_agent.research_answers import ResearchAnswerBuilder, ResearchAnswerStore, render_research_answer
 from invest_research_agent.research_artifacts import ResearchArtifactStore
+from invest_research_agent.opportunity_routing import OpportunityRouter
 from invest_research_agent.research_pipeline import ResearchNoteEnricher, write_enrichment_result
 from invest_research_agent.state_store import ResourceStateStore
 from invest_research_agent.stt import SttClient, check_stt_provider, load_stt_settings
@@ -167,6 +169,12 @@ def _build_parser() -> argparse.ArgumentParser:
     synthesize_answer.add_argument("--output-path", default=None, help="research answer 輸出路徑")
     synthesize_answer.add_argument("--json", action="store_true", help="輸出 JSON")
     synthesize_answer.set_defaults(handler=_handle_synthesize_answer, requires_orchestrator=False)
+
+    analyze_prediction_market = subparsers.add_parser("analyze-prediction-market", help="從 research answer 產生 prediction market 候選題目")
+    analyze_prediction_market.add_argument("--research-answer-path", required=True, help="research answer 路徑")
+    analyze_prediction_market.add_argument("--output-path", default=None, help="prediction market analysis 輸出路徑")
+    analyze_prediction_market.add_argument("--json", action="store_true", help="輸出 JSON")
+    analyze_prediction_market.set_defaults(handler=_handle_analyze_prediction_market, requires_orchestrator=False)
 
     return parser
 
@@ -483,6 +491,44 @@ def _handle_synthesize_answer(args: argparse.Namespace, orchestrator: CollectorO
     print("")
     print(f"research answer: {answer.path}")
     print("下一步：將 research artifact 與這份 answer 交給 `@research-answer-synthesizer`，由它負責 relevant claim selection，以及 direct mention / inference / needs validation 的主要判斷；Python / CLI 這裡只負責準備 output path、answer JSON 與後續 rendering。")
+
+
+def _handle_analyze_prediction_market(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    del orchestrator
+    answer = ResearchAnswerStore().read(args.research_answer_path)
+    routing = OpportunityRouter().route(answer)
+    result = PredictionMarketAnalyzer().analyze(answer, routing)
+
+    payload = {
+        "research_answer_path": str(result.research_answer_path),
+        "route": result.route,
+        "status": result.status,
+        "summary": result.summary,
+        "candidates": [
+            {
+                "framing": candidate.framing,
+                "search_queries": candidate.search_queries,
+                "rationale": candidate.rationale,
+                "source_claims": candidate.source_claims,
+                "warnings": candidate.warnings,
+            }
+            for candidate in result.candidates
+        ],
+        "warnings": result.warnings,
+    }
+
+    if args.output_path:
+        output_path = Path(args.output_path)
+        output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+
+    print(render_prediction_market_analysis(result))
+    if args.output_path:
+        print("")
+        print(f"prediction market analysis: {args.output_path}")
 
 
 def _resolve_project_path(project_root: Path, target: str) -> Path:

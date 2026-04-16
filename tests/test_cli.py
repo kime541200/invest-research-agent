@@ -7,8 +7,9 @@ from pathlib import Path
 
 from invest_research_agent import cli
 from invest_research_agent.analysis_artifacts import AnalysisArtifact, AnalysisArtifactStore
+from invest_research_agent.research_answers import ResearchAnswerStore
 from invest_research_agent.research_artifacts import ResearchArtifactStore
-from invest_research_agent.research_models import ResearchEnrichmentResult, ResearchEvidence
+from invest_research_agent.research_models import ResearchAnswer, ResearchAnswerPoint, ResearchEnrichmentResult, ResearchEvidence
 from invest_research_agent.research_models import ResearchNoteSections
 from invest_research_agent.stt import SttHealthStatus
 from invest_research_agent.transcript_artifacts import TranscriptArtifactWriter
@@ -278,3 +279,68 @@ def test_cli_synthesize_answer_outputs_rendered_answer(tmp_path: Path, monkeypat
     assert "結論：（無明確結論）" in output
     assert "research answer:" in output
     assert "由它負責 relevant claim selection" in output
+
+
+def test_cli_analyze_prediction_market_outputs_json(tmp_path: Path, monkeypatch, capsys) -> None:
+    answer = ResearchAnswer(
+        path=tmp_path / "sample.answer.json",
+        question="下一個值得追蹤的 prediction market 題目是什麼？",
+        research_artifact_path=tmp_path / "sample.research.json",
+        title="sample",
+        channel="sample-channel",
+        topic="sample-topic",
+        summary_answer="The main signal is a rate cut probability repricing.",
+        direct_mentions=[ResearchAnswerPoint(claim="Fed rate cut odds are being repriced.")],
+    )
+    ResearchAnswerStore().write(answer)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "invest-research-agent",
+            "analyze-prediction-market",
+            "--research-answer-path",
+            str(answer.path),
+            "--json",
+        ],
+    )
+
+    cli.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["route"] == "prediction_market"
+    assert payload["status"] == "ready"
+    assert payload["candidates"][0]["framing"] == "Will the next Fed decision be a rate cut?"
+
+
+def test_cli_analyze_prediction_market_renders_text_output(tmp_path: Path, monkeypatch, capsys) -> None:
+    answer = ResearchAnswer(
+        path=tmp_path / "sample.answer.json",
+        question="下一個值得追蹤的 prediction market 題目是什麼？",
+        research_artifact_path=tmp_path / "sample.research.json",
+        title="sample",
+        channel="sample-channel",
+        topic="sample-topic",
+        summary_answer="The main signal is a rate cut probability repricing.",
+        direct_mentions=[ResearchAnswerPoint(claim="Fed rate cut odds are being repriced.")],
+    )
+    ResearchAnswerStore().write(answer)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "invest-research-agent",
+            "analyze-prediction-market",
+            "--research-answer-path",
+            str(answer.path),
+        ],
+    )
+
+    cli.main()
+
+    output = capsys.readouterr().out
+    assert "Route: prediction_market" in output
+    assert "Candidates:" in output
+    assert "Search queries:" in output

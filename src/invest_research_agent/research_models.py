@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Literal
 
 
+PredictionMarketAnalysisStatus = Literal["ready", "needs_review", "out_of_scope"]
+
+
 @dataclass(frozen=True)
 class ResearchEvidence:
     title: str
@@ -89,4 +92,23 @@ class OpportunityRoutingResult:
     route: OpportunityRoute
     rationale: str
     supporting_claims: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class PredictionMarketCandidate:
+    framing: str
+    search_queries: list[str] = field(default_factory=list)
+    rationale: str = ""
+    source_claims: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class PredictionMarketAnalysisResult:
+    research_answer_path: Path
+    route: OpportunityRoute
+    status: PredictionMarketAnalysisStatus
+    summary: str
+    candidates: list[PredictionMarketCandidate] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)

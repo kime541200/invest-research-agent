@@ -159,11 +159,16 @@ flowchart TD
 
 尚未開始的重點：
 
-- opportunity routing
 - Polymarket analyzer
 - 股票 / ETF analyzer
 - portfolio model
 - Google Workspace sync
+
+已經落地、但下一步需要持續優化的重點：
+
+- research answer synthesis 品質
+- research artifact / claim-level enrichment 與最終 user-facing answer 之間的接合品質
+- opportunity routing v1 的 routeability 判斷、rationale 與 analyzer handoff 邊界
 
 ## 下一階段
 
@@ -233,7 +238,7 @@ Phase 3 的具體優化原則：
 
 ### Phase 4.5: Research artifact 中介層
 
-目標：在 transcript / analysis / note / enrichment 之間，建立一層更正式的 research artifact，作為後續 opportunity routing 與 analyzer 的穩定輸入。
+目標：在 transcript / analysis / note / enrichment 之間，建立一層更正式的 research artifact，作為後續 `ResearchAnswer`、opportunity routing 與 analyzer 的穩定輸入。
 
 為什麼要做：
 
@@ -265,7 +270,7 @@ Phase 3 的具體優化原則：
 
 這一層完成後，後續的 `opportunity routing`、Polymarket analyzer、股票 / ETF analyzer 都會有更穩定的輸入邊界。
 
-但根據 2026-04-11 的真實使用測試，僅有 research artifact 與 claim-level enrichment 還不足以直接讓最終回答品質顯著升級；還需要再補一層更明確的 research answer / synthesis layer，才能把中繼資料層的改善轉化成使用者可感知的研究輸出品質。
+但根據 2026-04-11 的真實使用測試，僅有 research artifact 與 claim-level enrichment 還不足以直接讓最終回答品質顯著升級；因此目前已補上 `ResearchAnswer` 這層 machine-readable answer contract，並以 agent-first workflow 逐步承接最終 synthesis judgment。接下來的重點不再是「要不要有 answer layer」，而是持續提升這一層的內容品質、證據引用與問題對齊程度，才能把中繼資料層的改善轉化成使用者可感知的研究輸出品質。
 
 ## 已明確方向，但尚未實作
 
@@ -288,18 +293,23 @@ Phase 3 的具體優化原則：
 - 先把產品邊界收斂在使用者自行維護的 `resources.yaml`
 - 等既有 research pipeline、research synthesis 與 analyzer 邊界更穩後，再回來做這項能力
 
-### 建議中的下一個能力：research answer / synthesis layer
+### 當前最高優先優化：research answer / synthesis layer
 
 目標：讓 Agent 最後回覆使用者研究問題時，不只是整理單支影片摘要，而是能基於 claims / evidence / research artifact 形成更研究化的回答。
 
-這一層預期要做到：
+目前已經落地的基礎：
+
+- `ResearchAnswer` contract 已存在，可承接 `summary_answer`、`direct_mentions`、`inferred_points`、`needs_validation`
+- Python / CLI 已退回 deterministic support layer，主要負責 stub、JSON persistence 與 rendering
+- `research-answer-synthesizer` 已被定位為主要 synthesis layer
+
+接下來這一層最需要補強的是：
 
 - 針對使用者問題挑選真正 relevant 的 claims，而不是平鋪直敘地摘要整集內容
 - 清楚區分「節目直接提到」、「根據節目內容推導」、「仍需進一步驗證」
 - 讓最終回答更明確暴露 source、evidence 與 uncertainty 邊界
-- 讓「熱門標的 / 熱門族群 / 潛在投資機會」這類問題的輸出，更接近研究結論而不只是節目整理
-
-這個能力目前尚未正式實作，但已經由真實測試證明其必要性。
+- 提升 `summary_answer`、citations 與 evidence quality，讓輸出更接近研究結論而不只是節目整理
+- 建立一小組 answer-level evaluation case，持續驗證不同題型下的輸出品質
 
 ### 最新方向稽核結論（2026-04-12）
 
@@ -314,9 +324,11 @@ Phase 3 的具體優化原則：
 
 ### Phase 5: 投資機會路由器
 
+目前狀態：`OpportunityRouter v1` 已落地，能從 persisted `ResearchAnswer` 讀取 `summary_answer`、`direct_mentions`、`inferred_points`、`needs_validation`，並先把結果分類到固定 lane。下一步重點不是「要不要做 routing」，而是持續收斂 routeability 判斷、rationale 品質，以及 routing 到 analyzer 的 handoff 邊界。
+
 目標：不要把最終分析終點綁死在 Polymarket，而是先判斷哪一種投資路線最適合承接該論點。
 
-規劃中的路線：
+目前 v1 已支援的路線：
 
 - `prediction_market`
   - 例如 Polymarket
@@ -490,32 +502,38 @@ Polymarket 是重要路線之一，但不是唯一目標。
 
 ### P0
 
-- 維持目前主流程穩定
+- 維持目前 collect / transcript / artifact 主流程穩定
 - 把 `collect-from-topic --dry-run` 與 smoke checklist 文件化
-- 確保後續優化不破壞收集鏈路
+- 確保後續優化不破壞既有收集鏈路與中繼產物
+- 持續讓 `ROADMAP.md`、OpenSpec 與實際 code 狀態保持一致，避免文件與 repo 脫節
 
 ### P1
 
-- 提升 analysis artifact 品質，讓 `core_conclusion`、`key_points`、`evidence_points` 更接近 thesis / claims / supporting evidence
-- 提升研究筆記內容品質
-- 改善 keyword / claim extraction
-- 把 enrichment 從 note-level keyword search 逐步升級為 claim-level enrichment
-- 強化 RSS / 外部資料 evidence 品質與排序
-- 讓 research artifacts 更適合作為後續 analyzer 的輸入
-- 建立一小組代表性影片的人工評測集，用來評估 note / claim / evidence 品質是否真的提升
+- 強化 `research answer synthesis` 品質，讓最終回答真正建立在 claims / evidence / uncertainty 邊界上
+- 提升 `summary_answer`、`direct_mentions`、`inferred_points`、`needs_validation` 的穩定度與問題對齊程度
+- 提升 citations / evidence quality，讓輸出更可追溯
+- 建立一小組代表性問題與影片的 answer-level evaluation cases，持續驗證不同題型下的回答品質
 
 ### P2
 
-- 定義更正式的 claim / evidence / research artifact 流程
-- 建立 `research artifact v1` 的最小穩定 schema
-- 規劃 opportunity routing 的輸入介面
-- 為後續 Polymarket 與股票 / ETF 路線建立穩定邊界
-- 明確區分 human-readable note 與 machine-readable artifact 的責任
+- 持續補強 `transcript -> analysis artifact -> note -> research artifact -> ResearchAnswer` 之間的接合品質
+- 提升 analysis artifact 品質，讓 `core_conclusion`、`key_points`、`evidence_points` 更接近 thesis / claims / supporting evidence
+- 改善 keyword / claim extraction
+- 把 enrichment 從 note-level keyword search 逐步升級為 claim-level enrichment
+- 強化 RSS / 外部資料 evidence 品質與排序
+- 明確區分 human-readable note、machine-readable artifact 與 answer layer 的責任
 
 ### P3
 
-- 實作投資機會路由器
-- 先接 Polymarket 與股票 / ETF 兩條路線
+- 迭代 `opportunity routing v1`，提升 routeability 判斷、rationale 品質與 warning 使用方式
+- 增加 routing edge cases 與 evaluation coverage
+- 定義 routing 往 Polymarket / 股票 / ETF analyzer 的穩定 handoff interface
+- 在 routing 邊界穩定後，再開始實作第一個 analyzer
+
+### P4
+
+- 實作 Polymarket analyzer
+- 實作股票 / ETF analyzer
 - 建立 portfolio model
 - 再決定如何與 Google Sheets / Docs 做同步
 
