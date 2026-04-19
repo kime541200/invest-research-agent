@@ -437,7 +437,7 @@ def _handle_prepare_analysis(args: argparse.Namespace, orchestrator: CollectorOr
         return
 
     print(f"已初始化 analysis artifact: {artifact.path}")
-    print("下一步：在 Gemini CLI 中將 transcript artifact 交給 `@transcript-analyst`，並要求它填寫這個 analysis artifact。")
+    print("下一步：把 transcript artifact 與 analysis artifact 路徑交給 `transcript-analyst` 子 Agent；若使用 Codex，請明確要求它 spawn `transcript-analyst`，若使用 Gemini CLI，則可直接用 `@transcript-analyst`。")
 
 
 def _handle_render_note(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
@@ -490,7 +490,7 @@ def _handle_synthesize_answer(args: argparse.Namespace, orchestrator: CollectorO
     print(render_research_answer(answer))
     print("")
     print(f"research answer: {answer.path}")
-    print("下一步：將 research artifact 與這份 answer 交給 `@research-answer-synthesizer`，由它負責 relevant claim selection，以及 direct mention / inference / needs validation 的主要判斷；Python / CLI 這裡只負責準備 output path、answer JSON 與後續 rendering。")
+    print("下一步：將 research artifact 與這份 answer 交給 `research-answer-synthesizer` 子 Agent；若使用 Codex，請明確要求它 spawn `research-answer-synthesizer`，若使用 Gemini CLI，則可直接用 `@research-answer-synthesizer`。它負責 relevant claim selection，以及 direct mention / inference / needs validation 的主要判斷；Python / CLI 這裡只負責準備 output path、answer JSON 與後續 rendering。")
 
 
 def _handle_analyze_prediction_market(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:

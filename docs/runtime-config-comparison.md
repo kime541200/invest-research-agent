@@ -1,6 +1,6 @@
-# `.gemini` / `.claude` / `.cursor` 三方對照表 + 待補清單
+# `.gemini` / `.claude` / `.codex` / `.cursor` 對照表 + 待補清單
 
-這份文件整理目前專案在 Gemini、Claude Code、Cursor 三個執行環境中的設定現況、已對齊項目、差異點與下一步待補清單。
+這份文件整理目前專案在 Gemini、Claude Code、Codex、Cursor 四個執行環境中的設定現況、已對齊項目、差異點與下一步待補清單。
 
 ## 目的
 
@@ -12,26 +12,28 @@
 
 ## 一、現況總覽
 
-| 面向 | `.gemini` | `.claude` | `.cursor` | 現況判斷 |
-|---|---|---|---|---|
-| MCP 設定檔 | `.gemini/settings.json` | `.claude/settings.local.json` + repo `.mcp.json` | `.cursor/mcp.json` | 已可用，但格式不一致屬正常 |
-| YouTube MCP server | `yt-mcp-server` | `yt-mcp-server` | `yt-mcp-server` | 已對齊 |
-| MCP URL | `http://localhost:8088/mcp` | `http://localhost:8088/mcp` | `http://localhost:8088/mcp` | 已對齊 |
-| 專案 command：resources add | 有：`commands/resources/add.toml` | 有：`commands/resources/add.md` | 有：`commands/resources-add.md` | 已對齊 |
-| OpenSpec / OPSX command | 無 | 有：`commands/opsx/*` | 有：`commands/opsx-*` | Gemini 仍缺 |
-| transcript subagent | 有：`agents/transcript-analyst.md` | 有：`agents/transcript-analyst.md` | 無明確 subagent 機制 | Gemini / Claude 已對齊 |
-| gh-cli skill | 有 | 有 | 無 project skill 結構 | Gemini / Claude 已對齊 |
-| mcp-server-tester skill | 有 | 有 | 無 project skill 結構 | Gemini / Claude 已對齊 |
-| mcporter skill | 有 | 有 | 無 project skill 結構 | Gemini / Claude 已對齊 |
-| openspec skills | 有 | 有 | 無 project skill 結構 | Gemini / Claude 已對齊 |
-| 專案內 MCP 文件 | 有 docs | 有 docs | 有 docs | 已對齊 |
-| 官方/參考文件收納 | Gemini 參考較少 | 已加入 `references/claude-code/subagents.md` | 主要靠 command 範例 | 可再整理 |
+| 面向 | `.gemini` | `.claude` | `.codex` | `.cursor` | 現況判斷 |
+|---|---|---|---|---|---|
+| MCP 設定檔 | `.gemini/settings.json` | `.claude/settings.local.json` + repo `.mcp.json` | `.codex/config.toml` | `.cursor/mcp.json` | 已可用，但格式不一致屬正常 |
+| YouTube MCP server | `yt-mcp-server` | `yt-mcp-server` | 依 parent session / repo 設定決定 | `yt-mcp-server` | Codex 這層先以 subagent 對齊為主 |
+| MCP URL | `http://localhost:8088/mcp` | `http://localhost:8088/mcp` | 依 parent session / repo 設定決定 | `http://localhost:8088/mcp` | 已知執行環境不同，文件需說清楚 |
+| 專案 command：resources add | 有：`commands/resources/add.toml` | 有：`commands/resources/add.md` | 無 project command 結構 | 有：`commands/resources-add.md` | Codex 以主對話 + subagent 為主 |
+| OpenSpec / OPSX command | 無 | 有：`commands/opsx/*` | 無 project command 結構 | 有：`commands/opsx-*` | Gemini / Codex 仍缺 command 入口 |
+| transcript subagent | 有：`agents/transcript-analyst.md` | 有：`agents/transcript-analyst.md` | 有：`agents/transcript-analyst.toml` | 無明確 subagent 機制 | Gemini / Claude / Codex 已對齊 |
+| research-answer-synthesizer subagent | 無明確 project 定義 | 有：`agents/research-answer-synthesizer.md` | 有：`agents/research-answer-synthesizer.toml` | 無明確 subagent 機制 | Claude / Codex 已對齊 |
+| resources-add skill | 有：`skills/resources-add/SKILL.md` | 有：`skills/resources-add/SKILL.md` | 有：`skills/resources-add/SKILL.md` | 無 project skill 結構 | 核心 workflow 已抽成共享 skill |
+| gh-cli skill | 有 | 有 | 無 project skill 結構 | 無 project skill 結構 | Gemini / Claude 已對齊 |
+| mcp-server-tester skill | 有 | 有 | 無 project skill 結構 | 無 project skill 結構 | Gemini / Claude 已對齊 |
+| mcporter skill | 有 | 有 | 無 project skill 結構 | 無 project skill 結構 | Gemini / Claude 已對齊 |
+| openspec skills | 有 | 有 | 無 project skill 結構 | 無 project skill 結構 | Gemini / Claude 已對齊 |
+| 專案內 MCP 文件 | 有 docs | 有 docs | 尚未補專屬 docs | 有 docs | Codex 後續可補 runtime doc |
+| 官方/參考文件收納 | Gemini 參考較少 | 已加入 `references/claude-code/subagents.md` | 已加入 `references/codex/subagents/*` | 主要靠 command 範例 | 可再整理 |
 
 ---
 
 ## 二、已完成的對齊項目
 
-### 1. YouTube channel onboarding workflow 已三方對齊
+### 1. YouTube channel onboarding workflow 已在 Gemini / Claude / Cursor 對齊
 
 目前三邊都已經有「新增 YouTube 頻道到 `resources.yaml`」的 project command：
 
@@ -49,10 +51,19 @@
 - 若頻道已存在，不直接覆寫
 - 不碰 note / transcript / analysis artifacts
 
-### 2. transcript-analyst subagent 已在 Gemini / Claude 對齊
+目前也已補上共享 skill：
+
+- Gemini: `.gemini/skills/resources-add/SKILL.md`
+- Claude: `.claude/skills/resources-add/SKILL.md`
+- Codex: `.codex/skills/resources-add/SKILL.md`
+
+建議後續優先維護 skill 內容，再讓 runtime-specific command 保持薄入口。
+
+### 2. transcript-analyst subagent 已在 Gemini / Claude / Codex 對齊
 
 - Gemini: `.gemini/agents/transcript-analyst.md`
 - Claude: `.claude/agents/transcript-analyst.md`
+- Codex: `.codex/agents/transcript-analyst.toml`
 
 兩者任務目標一致：
 
@@ -60,12 +71,25 @@
 - 產出 analysis artifact JSON
 - 不碰 routing / MCP / collection state / final note
 
-差異主要來自 runtime frontmatter 格式不同，屬合理差異：
+差異主要來自 runtime frontmatter / config 格式不同，屬合理差異：
 
 - Gemini 使用 `kind`, `temperature`, `max_turns`
 - Claude 使用 `tools`, `maxTurns`, `color`
+- Codex 使用 `name`, `description`, `developer_instructions`
 
-### 3. Claude 已補齊原本 Gemini 有的多數 project skills
+### 3. research-answer-synthesizer subagent 已在 Claude / Codex 對齊
+
+- Claude: `.claude/agents/research-answer-synthesizer.md`
+- Codex: `.codex/agents/research-answer-synthesizer.toml`
+
+兩者任務目標一致：
+
+- 讀取 research artifact 與使用者問題
+- 產出 research answer JSON
+- 負責 relevant claim selection 與 answer-boundary judgment
+- 不碰 routing / collection state / final note
+
+### 4. Claude 已補齊原本 Gemini 有的多數 project skills
 
 目前 `.claude/skills/` 已包含：
 
@@ -79,7 +103,7 @@
 
 這讓 Claude 在 repo 內的專案操作能力，已不再明顯落後 Gemini。
 
-### 4. Claude / Cursor 已補齊 OPSX command 入口
+### 5. Claude / Cursor 已補齊 OPSX command 入口
 
 - Claude: `.claude/commands/opsx/{propose,explore,apply,archive}.md`
 - Cursor: `.cursor/commands/opsx-{propose,explore,apply,archive}.md`
@@ -88,7 +112,7 @@
 
 ---
 
-## 三、三方差異拆解
+## 三、四方差異拆解
 
 ## A. MCP 設定層
 
@@ -199,12 +223,12 @@ Gemini 目前有 openspec skills，但缺少 project command 入口。
 
 ### 判斷
 
-- Gemini 與 Claude 都已有 project-level transcript analysis subagent
+- Gemini、Claude、Codex 都已有 project-level transcript analysis subagent
 - Cursor 目前主要是 command 導向，沒有同樣的 repo-level subagent 結構可直接對位
 
-因此這一層不建議硬做三方完全一致，而是：
+因此這一層不建議硬做四個 runtime 完全一致，而是：
 
-- Gemini / Claude 維持 agent parity
+- Gemini / Claude / Codex 維持 agent parity
 - Cursor 只補足實際常用 workflow command 即可
 
 ---
@@ -239,6 +263,7 @@ Cursor 在這個 repo 內目前沒有相同的 skill 目錄結構，因此不適
 - Cursor 有：`docs/mcp-config/cursor.md`
 - Claude 另外已有：`references/claude-code/subagents.md`
 - Gemini 也有對應參考：`references/gemini-cli/custom-commands.md`、`references/gemini-cli/subagents.md`
+- Codex 也有對應參考：`references/codex/subagents/concept.md`、`references/codex/subagents/setup.md`
 
 ### 判斷
 
@@ -288,8 +313,9 @@ Cursor 在這個 repo 內目前沒有相同的 skill 目錄結構，因此不適
 
 **內容建議：**
 
-- 哪些能力應三方同步：`resources add`、OPSX commands、MCP server 名稱與 URL
-- 哪些能力只需 Gemini / Claude 對齊：subagents、skills
+- 哪些能力應跨 runtime 同步：`resources add`、OPSX commands、MCP server 名稱與 URL
+- 哪些能力只需 Gemini / Claude / Codex 對齊：subagents
+- 哪些能力只需 Gemini / Claude 對齊：skills
 - 哪些差異屬 runtime-specific，可保留不同格式：settings frontmatter、MCP config shape
 - 新增 command / agent / skill 時的同步檢查清單
 
@@ -322,7 +348,7 @@ Cursor 在這個 repo 內目前沒有相同的 skill 目錄結構，因此不適
 
 **建議內容：**
 
-- 使用 Gemini / Claude / Cursor 時，各自支援哪些操作
+- 使用 Gemini / Claude / Codex / Cursor 時，各自支援哪些操作
 - MCP / commands / agents / skills 各在哪裡設定
 
 **原因：**
@@ -352,7 +378,7 @@ Cursor 在這個 repo 內目前沒有相同的 skill 目錄結構，因此不適
 
 後續若再新增功能，建議用下面原則判斷是否要同步：
 
-### 應優先三方同步的項目
+### 應優先跨 runtime 同步的項目
 
 - 與專案主工作流直接相關的 command
 - MCP server 名稱 / URL / 啟用方式文件
@@ -375,7 +401,7 @@ Cursor 在這個 repo 內目前沒有相同的 skill 目錄結構，因此不適
 
 ## 六、目前結論
 
-目前三方狀態可以總結成一句話：
+目前四個 runtime 的狀態可以總結成一句話：
 
 > 核心的 MCP 與 `resources add` workflow 已基本對齊；Claude 已大幅補上原本相對缺少的 project 能力；下一步最值得做的是補齊 Gemini 的 OPSX command 入口，並建立一份明確的多 runtime 維護規則。
 

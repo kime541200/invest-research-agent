@@ -282,7 +282,7 @@ notes/YYYY-MM-DD/<topic>/
 - 以 `mcporter` 直接訪問 MCP server 的能力
 - transcript artifact 與 analysis artifact 的分層工作流
 - `export-transcripts-from-topic`、`prepare-analysis`、`render-note` 三段式驗證入口
-- Gemini CLI `transcript-analyst` 子 Agent 定義
+- Gemini CLI / Codex 的 `transcript-analyst` 子 Agent 定義
 
 目前尚未完成或仍在後續階段的部分：
 
@@ -306,15 +306,18 @@ notes/YYYY-MM-DD/<topic>/
 source .venv/bin/activate
 python -m invest_research_agent export-transcripts-from-topic --topic "區塊鏈資訊"
 python -m invest_research_agent prepare-analysis --transcript-path "transcripts/YYYY-MM-DD/區塊鏈資訊/example.transcript.md"
-# 接著在 Gemini CLI 中使用 @transcript-analyst 完成 analysis artifact
+# 接著使用 transcript-analyst 子 Agent 完成 analysis artifact
+# Gemini CLI 可直接用 @transcript-analyst
+# Codex 請明確要求它 spawn transcript-analyst
 python -m invest_research_agent render-note \
   --transcript-path "transcripts/YYYY-MM-DD/區塊鏈資訊/example.transcript.md" \
   --analysis-path "analysis/YYYY-MM-DD/區塊鏈資訊/example.analysis.json"
 ```
 
-第一版 `transcript-analyst` 子 Agent 定義位於：
+目前 `transcript-analyst` 子 Agent 定義位於：
 
 - `.gemini/agents/transcript-analyst.md`
+- `.codex/agents/transcript-analyst.toml`
 
 ### Research artifact -> Answer synthesis 驗證
 
@@ -347,7 +350,9 @@ python -m invest_research_agent --analysis-dir analysis synthesize-answer \
   --question "如果我要追蹤這支影片裡最值得持續關注的 3 個訊號，應該優先看哪 3 個？" \
   --json
 
-# 3. 用 Gemini CLI 做真實 synthesis
+# 3. 用子 Agent 做真實 synthesis
+#    - Gemini CLI 可直接用 @research-answer-synthesizer
+#    - Codex 請明確要求它 spawn research-answer-synthesizer
 #    - 嚴格要求輸出 JSON
 #    - direct_mentions / inferred_points / needs_validation 必須維持 object array shape
 #    - summary_answer 必須直接回答使用者問題

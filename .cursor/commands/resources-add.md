@@ -7,6 +7,8 @@ description: Add a YouTube channel to resources.yaml by analyzing recent videos 
 
 Add a YouTube channel to `resources.yaml` and initialize its `channel_state` entry.
 
+Prefer following the shared `resources-add` skill in the runtime skill directory, for example `.codex/skills/resources-add/SKILL.md`.
+
 **Input**: The argument after this command is a channel URL, handle, channel name, or a short block of channel info.
 
 ---

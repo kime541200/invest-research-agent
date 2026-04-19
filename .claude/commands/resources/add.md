@@ -7,6 +7,8 @@ tags: [resources, youtube, routing, mcp]
 
 Add a YouTube channel to `resources.yaml` and initialize its `channel_state` entry.
 
+Prefer following the shared `resources-add` skill in `.claude/skills/resources-add/SKILL.md`.
+
 **Input**: The argument after this command is a channel URL, handle, channel name, or a short block of channel info.
 
 ---

@@ -70,7 +70,7 @@
   - 保存 transcript artifact
   - 準備 analysis artifact
   - 整合最終 note
-- 主 Agent 不應直接根據長逐字稿產出研究報告內容；當 transcript artifact 已存在時，應優先委派給 `.gemini/agents/transcript-analyst.md` 定義的 `transcript-analyst` 子 Agent。
+- 主 Agent 不應直接根據長逐字稿產出研究報告內容；當 transcript artifact 已存在時，應優先委派給 `transcript-analyst` 子 Agent。Gemini 定義位於 `.gemini/agents/transcript-analyst.md`；Codex 定義位於 `.codex/agents/transcript-analyst.toml`。
 - `transcript-analyst` 子 Agent 只負責：
   - 讀取 transcript artifact
   - 產出 analysis artifact
@@ -127,7 +127,7 @@
 - 若要分步驗證 transcript -> analysis -> note 流程，可依序使用：
   - `python -m invest_research_agent export-transcripts-from-topic --topic "[使用者主題]"`
   - `python -m invest_research_agent prepare-analysis --transcript-path "[transcript artifact path]"`
-  - 在 Gemini CLI 中使用 `@transcript-analyst` 完成 analysis artifact
+  - 使用 `transcript-analyst` 子 Agent 完成 analysis artifact；若在 Gemini CLI 可用 `@transcript-analyst`，若在 Codex 則明確要求 spawn `transcript-analyst`
   - `python -m invest_research_agent render-note --transcript-path "[transcript artifact path]" --analysis-path "[analysis artifact path]"`
 - 若需要手動修正狀態，可使用：
   - `python -m invest_research_agent get-last-checked --channel [頻道名稱]`
@@ -138,7 +138,7 @@
 - 若需要驗證 answer synthesis workflow，優先用一組已完成 analysis artifact 的真實案例做 end-to-end 測試：
   - 先建立 research artifact
   - 再用 `python -m invest_research_agent ... synthesize-answer` 產生 answer stub
-  - 再用 Gemini CLI / `gemini -p "..."` 讓 `research-answer-synthesizer` 完成主要 synthesis judgment
+  - 再用 `research-answer-synthesizer` 子 Agent 完成主要 synthesis judgment；若在 Gemini CLI 可用 `@research-answer-synthesizer` 或 `gemini -p "..."`，若在 Codex 則明確要求 spawn `research-answer-synthesizer`
 - 每次 answer synthesis 驗證至少檢查：
   - JSON shape 是否符合 answer contract
   - `summary_answer` 是否直接回答問題
