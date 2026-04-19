@@ -1,3 +1,6 @@
 [agents]
 max_threads = 6
 max_depth = 1
+
+[mcp_servers.yt-mcp-server]
+url = "http://localhost:8088/mcp"
