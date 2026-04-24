@@ -217,4 +217,22 @@ def _resolve_research_sections(context: NoteContext) -> ResearchNoteSections:
         return context.research_sections
     if context.analysis_artifact is not None and context.analysis_artifact.status == "ready":
         return context.analysis_artifact.summary
+    if _has_notebooklm_research(context):
+        return _build_notebooklm_unavailable_sections(context)
     return build_unavailable_analysis_sections(context.analysis_artifact)
+
+
+def _has_notebooklm_research(context: NoteContext) -> bool:
+    return context.transcript is None and context.analysis_artifact is None
+
+
+def _build_notebooklm_unavailable_sections(context: NoteContext) -> ResearchNoteSections:
+    del context
+    return ResearchNoteSections(
+        core_conclusion="NotebookLM 主路徑尚未提供可用研究摘要。",
+        key_points=[],
+        answered_questions=[],
+        evidence_points=[],
+        limitations=["目前筆記主要依賴 NotebookLM 主路徑，但尚未取得可用 evidence。"],
+        follow_up_questions=["確認 NotebookLM source ingestion 與問答是否成功。"],
+    )

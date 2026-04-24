@@ -1,3 +1,6 @@
 [submodule "modules/yt-mcp-server"]
 	path = modules/yt-mcp-server
 	url = https://github.com/kime541200/yt-mcp-server.git
+[submodule "modules/notebooklm-py"]
+	path = modules/notebooklm-py
+	url = https://github.com/kime541200/notebooklm-py.git

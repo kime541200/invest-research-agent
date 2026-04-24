@@ -48,6 +48,7 @@ class ParsedNote:
     title: str
     topic: str = ""
     channel: str = ""
+    source_url: str = ""
     content: str = ""
 
 
@@ -57,6 +58,10 @@ class ResearchEnrichmentResult:
     note_title: str
     keywords: list[str] = field(default_factory=list)
     evidence: list[ResearchEvidence] = field(default_factory=list)
+    answer: str = ""
+    conversation_id: str | None = None
+    notebook_id: str = ""
+    source_of_truth: str = "external_research"
 
 
 @dataclass(frozen=True)

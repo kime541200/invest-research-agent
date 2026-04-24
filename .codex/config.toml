@@ -1,3 +1,8 @@
+openai_base_url="http://100.113.187.24:8080/openai/v1"
+env_key="OPENAI_API_KEY"
+model = "azure/gpt-5.4"
+model_reasoning_effort = "high"
+
 [agents]
 max_threads = 6
 max_depth = 1

@@ -8,8 +8,13 @@ from typing import Any
 from invest_research_agent.analysis_artifacts import AnalysisArtifactStore
 from invest_research_agent.audio_downloader import AudioDownloader
 from invest_research_agent.dedupe import select_new_videos
-from invest_research_agent.models import ChannelCollectionResult, CollectionResult
+from invest_research_agent.models import ChannelCollectionResult, CollectionResult, NotebookLMWorkflowResult
 from invest_research_agent.note_generator import MarkdownNoteGenerator, NoteContext
+from invest_research_agent.notebooklm_enricher import NotebookLMCollectedResearch, NotebookLMNoteEnricher
+from invest_research_agent.notebooklm_gateway import NotebookLMGatewayError
+from invest_research_agent.research_artifacts import ResearchArtifactStore
+from invest_research_agent.research_models import ResearchEnrichmentResult
+from invest_research_agent.research_pipeline import write_enrichment_result
 from invest_research_agent.transcript_artifacts import TranscriptArtifactWriter
 from invest_research_agent.state_store import ResourceStateStore
 from invest_research_agent.stt import SttClient
@@ -29,6 +34,7 @@ class CollectorOrchestrator:
         analysis_root: Path | str | None = None,
         audio_downloader: AudioDownloader | None = None,
         stt_client: SttClient | None = None,
+        notebooklm_enricher: NotebookLMNoteEnricher | None = None,
     ) -> None:
         self.state_store = state_store
         self.topic_router = topic_router
@@ -39,8 +45,10 @@ class CollectorOrchestrator:
         self.analysis_root = Path(analysis_root) if analysis_root is not None else self.notes_root.parent / "analysis"
         self.audio_downloader = audio_downloader
         self.stt_client = stt_client
+        self.notebooklm_enricher = notebooklm_enricher
         self.transcript_writer = TranscriptArtifactWriter()
         self.analysis_store = AnalysisArtifactStore()
+        self.research_store = ResearchArtifactStore()
 
     def collect_from_topic(
         self,
@@ -53,6 +61,7 @@ class CollectorOrchestrator:
         initialize_analysis: bool = True,
         write_notes: bool = True,
         update_state: bool = True,
+        notebooklm_first: bool = True,
     ) -> CollectionResult:
         channels = self.state_store.get_channels()
         routed_channels = self.topic_router.route(topic, channels, limit=max_channels)
@@ -74,8 +83,57 @@ class CollectorOrchestrator:
                 note_paths = []
                 transcript_paths = []
                 analysis_paths = []
+                research_paths = []
+                notebooklm_results = []
 
                 for video in new_videos:
+                    notebooklm_research, notebooklm_result = self._try_collect_with_notebooklm(
+                        topic=topic,
+                        channel=channel,
+                        video=video,
+                    ) if notebooklm_first else (None, NotebookLMWorkflowResult(status="not_attempted", reason="notebooklm_disabled"))
+                    notebooklm_results.append(notebooklm_result)
+                    if notebooklm_research is not None:
+                        note = None
+                        if write_notes:
+                            note = self.note_generator.write_note(
+                                NoteContext(
+                                    topic=topic,
+                                    channel=channel,
+                                    video=video,
+                                    transcript=None,
+                                    research_sections=notebooklm_research.research_sections,
+                                    analysis_artifact=None,
+                                ),
+                                output_root=self.notes_root,
+                                output_date=collected_date,
+                            )
+                            note_paths.append(note.path)
+                        if note is not None:
+                            enrichment = ResearchEnrichmentResult(
+                                note_path=note.path,
+                                note_title=video.title,
+                                keywords=[],
+                                evidence=notebooklm_research.evidence,
+                                answer=notebooklm_research.answer,
+                                conversation_id=notebooklm_research.conversation_id,
+                                notebook_id=notebooklm_research.notebook_id,
+                                source_of_truth="notebooklm",
+                            )
+                            sidecar_path = write_enrichment_result(
+                                enrichment,
+                                note.path.with_suffix(".notebooklm.research.json"),
+                            )
+                            research_artifact = self.research_store.build_from_notebooklm(
+                                enrichment=enrichment,
+                                channel=channel.name,
+                                topic=topic,
+                                output_root=self.analysis_root.parent / "research",
+                                output_date=collected_date.isoformat(),
+                            )
+                            research_paths.extend([sidecar_path, research_artifact.path])
+                        continue
+
                     transcript = self.video_gateway.get_transcript(
                         video.video_id,
                         language=transcript_language,
@@ -135,7 +193,9 @@ class CollectorOrchestrator:
                         new_videos=new_videos,
                         transcript_paths=transcript_paths,
                         analysis_paths=analysis_paths,
+                        research_paths=research_paths,
                         note_paths=note_paths,
+                        notebooklm_results=notebooklm_results,
                         status=status,
                         message=message,
                     )
@@ -222,9 +282,39 @@ class CollectorOrchestrator:
         for channel_result in data["channel_results"]:
             channel_result["transcript_paths"] = [str(path) for path in channel_result["transcript_paths"]]
             channel_result["analysis_paths"] = [str(path) for path in channel_result["analysis_paths"]]
+            channel_result["research_paths"] = [str(path) for path in channel_result.get("research_paths", [])]
             channel_result["note_paths"] = [str(path) for path in channel_result["note_paths"]]
         data["output_dir"] = str(result.output_dir)
         return data
+
+    def _try_collect_with_notebooklm(
+        self,
+        *,
+        topic: str,
+        channel: Any,
+        video: Any,
+    ) -> tuple[NotebookLMCollectedResearch | None, NotebookLMWorkflowResult]:
+        if self.notebooklm_enricher is None:
+            return None, NotebookLMWorkflowResult(status="not_attempted", reason="notebooklm_unconfigured")
+        try:
+            research = self.notebooklm_enricher.collect_video_research(
+                topic=topic,
+                channel=channel,
+                video=video,
+            )
+            return research, _collected_research_to_result(research)
+        except NotebookLMGatewayError as exc:
+            return None, NotebookLMWorkflowResult(
+                status="fallback",
+                reason=str(exc),
+                source_of_truth="transcript_artifact",
+            )
+        except Exception as exc:
+            return None, NotebookLMWorkflowResult(
+                status="fallback",
+                reason=str(exc),
+                source_of_truth="transcript_artifact",
+            )
 
     def _get_best_available_transcript(
         self,
@@ -259,3 +349,26 @@ class CollectorOrchestrator:
                 transcript=transcript.transcript,
                 merged_transcript=transcript.merged_transcript,
             )
+
+
+def _collected_research_to_result(research: NotebookLMCollectedResearch) -> NotebookLMWorkflowResult:
+    return NotebookLMWorkflowResult(
+        notebook_id=research.notebook_id,
+        source_id=research.source_id,
+        source_status=research.source_status,
+        answer=research.answer,
+        conversation_id=research.conversation_id,
+        citations=[
+            {
+                "citation_number": item.citation_number,
+                "source_id": item.source_id,
+                "title": item.title,
+                "url": item.url,
+                "cited_text": item.cited_text,
+            }
+            for item in research.citations
+        ],
+        status="success",
+        reason="",
+        source_of_truth=research.source_of_truth,
+    )

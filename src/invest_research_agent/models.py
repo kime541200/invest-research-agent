@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
-from typing import Any
+from typing import Any, Literal
 
 WatchTier = Literal["core", "normal", "optional", "paused"]
 
@@ -76,6 +75,19 @@ class GeneratedNote:
 
 
 @dataclass(frozen=True)
+class NotebookLMWorkflowResult:
+    notebook_id: str = ""
+    source_id: str = ""
+    source_status: str = ""
+    answer: str = ""
+    conversation_id: str | None = None
+    citations: list[dict[str, Any]] = field(default_factory=list)
+    status: str = "not_attempted"
+    reason: str = ""
+    source_of_truth: str = ""
+
+
+@dataclass(frozen=True)
 class ChannelCollectionResult:
     channel: ChannelConfig
     resolved_channel_id: str | None
@@ -85,7 +97,9 @@ class ChannelCollectionResult:
     new_videos: list[VideoMetadata] = field(default_factory=list)
     transcript_paths: list[Path] = field(default_factory=list)
     analysis_paths: list[Path] = field(default_factory=list)
+    research_paths: list[Path] = field(default_factory=list)
     note_paths: list[Path] = field(default_factory=list)
+    notebooklm_results: list[NotebookLMWorkflowResult] = field(default_factory=list)
     status: str = "pending"
     message: str = ""
 

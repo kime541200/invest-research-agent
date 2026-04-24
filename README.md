@@ -447,13 +447,19 @@ AUDIO_CACHE_TTL_DAYS=7
 
 ## 持續追蹤觀察
 
-目前專案已先移除 `NotebookLM` 相關整合，原因是現階段缺少穩定、可自動化的 `add source` 能力，不適合納入主流程。
+目前專案的主流程已調整為 `主題 -> 頻道 -> 最新影片 -> NotebookLM ingestion / 問答 -> artifact / 筆記`。
 
-後續若下列條件成熟，會再重新評估：
+NotebookLM 現在是影片內容理解的預設主路徑，例如：
 
-- `notebooklm-skill` 或 `notebooklm-mcp` upstream 正式支援穩定的 `add source`
-- 能以程式方式把 YouTube 影片連結安全加入 notebook
-- ingestion 與問答流程的成功率足以支撐可重跑的自動化 pipeline
+- 把 YouTube 影片來源匯入 NotebookLM
+- 使用 NotebookLM citation-backed Q&A 整理影片重點
+- 讓 research artifact / note 直接以 NotebookLM-derived evidence 為主
+
+現階段的建議做法是：
+
+- 預設先走 NotebookLM 主路徑
+- 只有在 NotebookLM server / auth / source ingestion / ask 路徑完全不可用時，才退回 transcript / STT fallback
+- 將 transcript artifact 視為 fallback path 的事實層輸出，而不是每支影片都必備的前置條件
 
 ## 測試
 

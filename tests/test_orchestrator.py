@@ -3,9 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from invest_research_agent.audio_downloader import AudioDownloader
-from invest_research_agent.models import TranscriptBundle, TranscriptSegment, VideoMetadata
+from invest_research_agent.models import ChannelConfig, TranscriptBundle, TranscriptSegment, VideoMetadata
 from invest_research_agent.note_generator import MarkdownNoteGenerator
+from invest_research_agent.notebooklm_enricher import NotebookLMCollectedResearch
+from invest_research_agent.notebooklm_gateway import NotebookLMCitation
 from invest_research_agent.orchestrator import CollectorOrchestrator
+from invest_research_agent.research_models import ResearchEvidence, ResearchNoteSections
 from invest_research_agent.state_store import ResourceStateStore
 from invest_research_agent.stt import SttClient, SttSettings
 from invest_research_agent.topic_router import TopicRouter
@@ -58,6 +61,50 @@ class FakeUnavailableYouTubeGateway(FakeYouTubeGateway):
             status="unavailable",
             reason="transcripts_disabled",
         )
+
+
+class FakeNotebookLMEnricher:
+    def collect_video_research(self, *, topic: str, channel: ChannelConfig, video: VideoMetadata):  # noqa: ANN001
+        del topic, channel
+        return NotebookLMCollectedResearch(
+            notebook_id="nb-1",
+            source_id="src-1",
+            source_status="ready",
+            answer="影片主要談 AI 與新創的最新觀察。",
+            conversation_id="conv-1",
+            citations=[
+                NotebookLMCitation(
+                    citation_number=1,
+                    source_id="src-1",
+                    title=video.title,
+                    url=video.url,
+                    cited_text="影片提到 AI 新創與商業模式的最新變化。",
+                )
+            ],
+            evidence=[
+                ResearchEvidence(
+                    title=video.title,
+                    source="NotebookLM",
+                    summary="影片提到 AI 新創與商業模式的最新變化。",
+                    url=video.url,
+                    score=5.0,
+                )
+            ],
+            research_sections=ResearchNoteSections(
+                core_conclusion="影片主要談 AI 與新創的最新觀察。",
+                key_points=["影片提到 AI 新創與商業模式的最新變化。"],
+                answered_questions=["這支影片的核心重點是什麼？"],
+                evidence_points=["影片提到 AI 新創與商業模式的最新變化。"],
+                limitations=[],
+                follow_up_questions=[],
+            ),
+        )
+
+
+class FakeFailingNotebookLMEnricher:
+    def collect_video_research(self, *, topic: str, channel: ChannelConfig, video: VideoMetadata):  # noqa: ANN001
+        del topic, channel, video
+        raise RuntimeError("NotebookLM unavailable")
 
 
 class FakeAudioDownloader(AudioDownloader):
@@ -131,6 +178,7 @@ channel_state:
         video_gateway=FakeYouTubeGateway(),
         note_generator=MarkdownNoteGenerator(),
         notes_root=tmp_path / "notes",
+        notebooklm_enricher=FakeNotebookLMEnricher(),
     )
 
     result = orchestrator.collect_from_topic("我想看 AI 與新創", max_channels=1)
@@ -139,15 +187,15 @@ channel_state:
     channel_result = result.channel_results[0]
     assert channel_result.status == "processed"
     assert channel_result.new_videos[0].title == "新影片"
-    assert channel_result.transcript_paths[0].exists()
-    assert channel_result.analysis_paths[0].exists()
+    assert channel_result.transcript_paths == []
+    assert channel_result.analysis_paths == []
+    assert channel_result.research_paths[0].suffix == ".json"
     assert channel_result.note_paths[0].exists()
-    assert channel_result.transcript_paths[0].parent.name == "我想看_AI_與新創"
-    assert channel_result.analysis_paths[0].parent.name == "我想看_AI_與新創"
     assert channel_result.note_paths[0].parent.name == "我想看_AI_與新創"
     note_content = channel_result.note_paths[0].read_text(encoding="utf-8")
-    assert "analysis artifact 僅代表 transcript-derived analysis，尚非外部驗證結論。" in note_content
-    assert "分析結果尚未可用，當前 note 不應被視為已完成的研究結論。" in note_content
+    assert "影片主要談 AI 與新創的最新觀察。" in note_content
+    assert channel_result.notebooklm_results[0].status == "success"
+    assert channel_result.notebooklm_results[0].source_of_truth == "notebooklm"
 
     reloaded = ResourceStateStore(resource_file).get_channel("inside6202")
     assert reloaded is not None
@@ -182,6 +230,7 @@ channel_state:
         notes_root=tmp_path / "notes",
         audio_downloader=fake_downloader,
         stt_client=FakeSttClient(),
+        notebooklm_enricher=FakeFailingNotebookLMEnricher(),
     )
 
     result = orchestrator.collect_from_topic("AI", max_channels=1)
@@ -191,4 +240,5 @@ channel_state:
     assert "- **字幕來源：** STT fallback" in note_content
     assert result.channel_results[0].transcript_paths[0].exists()
     assert result.channel_results[0].analysis_paths[0].exists()
+    assert result.channel_results[0].notebooklm_results[0].status == "fallback"
     assert fake_downloader.success_paths == [fake_audio_path]

@@ -8,7 +8,7 @@ from invest_research_agent.research_artifacts import (
     ResearchArtifactClaim,
     ResearchArtifactStore,
 )
-from invest_research_agent.research_models import ResearchEvidence, ResearchNoteSections
+from invest_research_agent.research_models import ResearchEnrichmentResult, ResearchEvidence, ResearchNoteSections
 from invest_research_agent.transcript_artifacts import TranscriptArtifact
 from invest_research_agent.models import TranscriptSegment
 
@@ -105,3 +105,40 @@ def test_research_artifact_store_builds_from_analysis_without_duplication(tmp_pa
     assert [claim.text for claim in artifact.claims] == ["訂閱收入提高可預測性。", "服務收入更依賴交付能力。"]
     assert artifact.overall_risks == ["未比較不同產業別的差異。"]
     assert artifact.next_actions == ["哪些 retention 指標最能驗證收入品質？"]
+
+
+def test_research_artifact_store_builds_from_notebooklm(tmp_path: Path) -> None:
+    store = ResearchArtifactStore()
+    note_path = tmp_path / "sample.note.md"
+    note_path.write_text("# Sample\n", encoding="utf-8")
+    enrichment = ResearchEnrichmentResult(
+        note_path=note_path,
+        note_title="AI 公司怎麼賺錢？",
+        keywords=["AI", "商業模式"],
+        evidence=[
+            ResearchEvidence(
+                title="影片來源",
+                source="NotebookLM",
+                summary="影片提到訂閱收入提高可預測性。",
+                url="https://www.youtube.com/watch?v=video123",
+                score=5.0,
+            )
+        ],
+        answer="NotebookLM 指出主軸是 AI 公司的營收模式。",
+        conversation_id="conv-1",
+        notebook_id="nb-1",
+        source_of_truth="notebooklm",
+    )
+
+    artifact = store.build_from_notebooklm(
+        enrichment=enrichment,
+        channel="inside6202",
+        topic="AI 商業模式",
+        output_root=tmp_path,
+        output_date="2026-04-11",
+    )
+
+    assert artifact.source_of_truth == "notebooklm"
+    assert artifact.transcript_path is None
+    assert artifact.analysis_path is None
+    assert artifact.claims[0].external_evidence[0].source == "NotebookLM"

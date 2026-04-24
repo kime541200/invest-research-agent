@@ -137,3 +137,37 @@ def test_note_generator_surfaces_unavailable_analysis_instead_of_transcript_open
     assert "- **分析狀態：** pending（來源：transcript_artifact）" in content
     assert "分析結果尚未可用，當前 note 不應被視為已完成的研究結論。" in content
     assert "## 📌 重點拆解\n- 待補" in content
+
+
+def test_note_generator_supports_notebooklm_first_without_transcript(tmp_path: Path) -> None:
+    generator = MarkdownNoteGenerator()
+    context = NoteContext(
+        topic="AI 商業模式",
+        channel=ChannelConfig(name="inside6202", url="https://www.youtube.com/@inside6202"),
+        video=VideoMetadata(
+            channel_name="inside6202",
+            channel_id="UC123",
+            video_id="video123",
+            title="AI 公司怎麼賺錢？",
+            url="https://www.youtube.com/watch?v=video123",
+            published_at="2026-04-06T08:00:00Z",
+        ),
+        transcript=None,
+        research_sections=ResearchNoteSections(
+            core_conclusion="NotebookLM 指出影片主軸是 AI 公司的營收模式。",
+            key_points=["訂閱收入提高可預測性。"],
+            answered_questions=["AI 公司怎麼賺錢？"],
+            evidence_points=["影片提到訂閱收入提高可預測性。"],
+            limitations=[],
+            follow_up_questions=[],
+        ),
+        analysis_artifact=None,
+    )
+
+    note = generator.write_note(context, output_root=tmp_path, output_date=date(2026, 4, 7))
+    content = note.path.read_text(encoding="utf-8")
+
+    assert "NotebookLM 指出影片主軸是 AI 公司的營收模式。" in content
+    assert "- **字幕狀態：** 未提供" in content
+    assert "- **分析狀態：** 未提供" in content
+    assert "## ⚠️ 逐字稿狀態" in content

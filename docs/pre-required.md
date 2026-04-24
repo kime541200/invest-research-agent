@@ -57,7 +57,60 @@ python -m yt_mcp_server
 
 如果 MCP server 驗證失敗，請先停止後續流程並協助排查 server 問題，確認恢復後再繼續。
 
-## 5. 確認 STT provider 模式
+## 5. 確認 NotebookLM MCP server 所需設定
+
+若本次任務需要把來源匯入 NotebookLM、使用 NotebookLM research，或透過 NotebookLM 問答取得內容重點，請先確認以下條件：
+
+- `modules/notebooklm-py/` 與 `modules/notebooklm-py/mcp/` 存在
+- 已完成 NotebookLM 登入狀態配置
+- 預設可用的認證檔為 `~/.notebooklm/profiles/default/storage_state.json`
+- 舊版環境仍可能使用 `~/.notebooklm/storage_state.json` 作為 fallback
+
+建議先檢查：
+
+```bash
+test -f ~/.notebooklm/profiles/default/storage_state.json && echo "profile storage_state.json exists"
+```
+
+或從 `modules/notebooklm-py/` 根目錄執行：
+
+```bash
+uv run notebooklm status
+```
+
+若尚未登入，請先由使用者執行：
+
+```bash
+uv run notebooklm login
+```
+
+## 6. 確認 NotebookLM MCP server 正常運行
+
+先查看 `nblm-mcp-server` 是否已啟動，一般情況下會運行在本機 `8089` port：
+
+- HTTP MCP endpoint: `http://localhost:8089/mcp`
+
+若需要啟動，優先使用 `modules/notebooklm-py/mcp/` 內的方式，例如：
+
+```bash
+uv sync --all-packages
+uv run python -m nblm_mcp_server
+```
+
+或：
+
+```bash
+docker compose up -d --build
+```
+
+## 7. 驗證 NotebookLM MCP server 可用
+
+- 可使用 `mcp-server-tester` skill 驗證
+- 也可用 `mcporter` 或 MCP `initialize` handshake 驗證 `http://localhost:8089/mcp` 是否可回應
+
+若 NotebookLM MCP server 驗證失敗，請先停止後續 NotebookLM 相關流程並協助排查，確認恢復後再繼續。
+
+## 8. 確認 STT provider 模式
 
 若目前需求包含「無字幕影片也要嘗試轉字幕」，請先確認使用者希望採用哪一種 STT provider：
 
@@ -67,7 +120,7 @@ python -m yt_mcp_server
 
 若使用者尚未決定，不要直接假設，請先詢問是要走本地還是雲端。
 
-## 6. 確認 STT provider 設定與健康狀態
+## 9. 確認 STT provider 設定與健康狀態
 
 根專案 `.env` 可配置：
 
@@ -140,7 +193,7 @@ docker compose -f infra/stt/vllm-qwen3-asr/compose.yaml --env-file infra/stt/vll
 
 若 STT provider 驗證失敗，請先停止後續流程並協助排查，確認恢復後再繼續。
 
-## 7. 回到正式執行入口
+## 10. 回到正式執行入口
 
 完成以上檢查後，回到正式 CLI 入口執行主流程：
 

@@ -3,6 +3,10 @@
     "yt-mcp-server": {
       "description": "Project-local YouTube MCP server",
       "baseUrl": "http://localhost:8088/mcp"
+    },
+    "nblm-mcp-server": {
+      "description": "Project-local NotebookLM MCP server",
+      "baseUrl": "http://localhost:8089/mcp"
     }
   },
   "imports": [

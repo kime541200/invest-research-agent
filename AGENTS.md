@@ -30,6 +30,7 @@
 - **基礎規則**：首先閱讀 [RULES.md](./RULES.md) 確立基本行為規範。
 - **前置配置**：參考 [docs/pre-required.md](./docs/pre-required.md) 進行相關環境的配置與檢查（包含 MCP Server 架設狀態等確認）。
 - **MCP 設定文件選擇**：MCP 設定格式依 Agent/客戶端而異，請先查閱 `docs/mcp-config/` 下對應環境的說明；若無對應文件，先搜尋現有設定與既有配置，仍無法確認時再請用戶提供。若只是想直接驗證或從 shell 呼叫 MCP，可優先參考 `docs/mcp-config/mcporter.md`。
+- **雙 MCP server 前置檢查**：若任務同時涉及 YouTube 資料取得與 NotebookLM 問答 / research enrichment，需先分別確認 `yt-mcp-server` 與 `nblm-mcp-server` 已完成配置並可連線，再開始正式 workflow。
 - **Python 執行方式**：若要執行根專案 Python 指令，先使用 `source .venv/bin/activate` 啟動虛擬環境；若 `.venv` 尚未建立，使用 `uv venv` 與 `uv pip install -e ".[dev]"` 初始化。
 - **Gemini CLI 測試方式**：若需要做真實 workflow 驗證或 cross-check，可直接使用 `gemini` 啟動 Gemini CLI；可用 `gemini -p "<prompt>"` 直接送提示詞，若希望測試流程中不要停下來逐步確認，可使用 `gemini --yolo`。需要查看更多操作時，優先用 `gemini --help`；若需要查官方說明或 repo 脈絡，可透過 `/gh-cli` 查看 `google-gemini/gemini-cli`。
 
@@ -56,7 +57,7 @@
   - 透過 `yt-mcp-server` 解析 `channel_id`
   - 取得每個頻道最近影片
   - 用 `last_checked_video_title` 做去重
-  - 優先抓取原生字幕，必要時再走音訊轉字幕 fallback
+  - 優先走 NotebookLM ingestion + 問答 / research 主路徑，只有在 NotebookLM 主路徑完全不可用時才走音訊轉字幕 fallback
   - 產出 Markdown 筆記到 `notes/YYYY-MM-DD/<topic>/`
   - 更新 `resources.yaml` 的 `channel_state.<channel_name>.last_checked_video_title`
 - 若只想預覽不落地，請加上 `--dry-run`。
@@ -88,6 +89,10 @@
 - 若沒有新影片，應明確回覆「沒有新影片」，而不是重複整理舊內容。
 - 若頻道第一次被處理，允許只處理最新 1 支影片，避免首次回填過量資料。
 - 若 `yt-mcp-server` 連線失敗，先排查 MCP server 狀態，確認恢復後再繼續。
+- 若任務需要把影片或其他來源匯入 NotebookLM，先確認 `nblm-mcp-server` 已啟動且可由 `http://localhost:8089/mcp` 存取。
+- 若 NotebookLM 需要登入狀態，先確認 `~/.notebooklm/profiles/default/storage_state.json` 可用，或從 `modules/notebooklm-py/` 根目錄執行 `uv run notebooklm status` 驗證；舊版環境仍可能使用 `~/.notebooklm/storage_state.json`。
+- 若 `nblm-mcp-server` 驗證失敗，先停止後續 NotebookLM 相關流程並協助排查，不要直接假設 NotebookLM tool 可用。
+- `yt-mcp-server` 負責 YouTube 頻道 / 影片 / 字幕資料取得；`nblm-mcp-server` 負責 notebook、source、NotebookLM research 與問答。不要把兩者責任混在同一層。
 - 若要啟用無字幕影片 fallback，先確認使用者要走本地或雲端 STT，並完成對應 provider 的健康檢查。
 - 若使用音訊下載 fallback，預設沿用 `AUDIO_CACHE_POLICY=ttl` 與 `AUDIO_CACHE_TTL_DAYS=7`；只有在使用者明確要求節省空間或避免保留音檔時，再建議改成 `delete-on-success`。
 - 若需要調整頻道優先級，優先修改 `watch_tier`，而不是重新引入 `always_watch` 之類的布林欄位。
@@ -151,5 +156,6 @@
 ## 5. 目前產品邊界
 
 - 目前先把 `主題 -> 頻道 -> 最新影片 -> 筆記` 這條主流程做穩。
-- 對於無字幕影片，優先考慮音訊下載與 STT provider fallback，而不是外部 grounding 流程。
-- 若未來上游工具提供穩定的 `add source` 能力，再評估是否重新導入相關方案。
+- 影片內容理解的預設主路徑改為 NotebookLM ingestion + 問答 / research；字幕 / STT 改為主路徑完全不可用時的 fallback。
+- 對於 fallback path，仍優先考慮音訊下載與 STT provider 的可重跑流程，而不是把失敗留在不可追蹤的 degraded state。
+- NotebookLM 與 yt-mcp-server 的責任邊界仍需分開：前者負責 notebook / source / QA / research，後者負責 YouTube metadata / video / transcript 資料取得。

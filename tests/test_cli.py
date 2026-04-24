@@ -9,7 +9,7 @@ from invest_research_agent import cli
 from invest_research_agent.analysis_artifacts import AnalysisArtifact, AnalysisArtifactStore
 from invest_research_agent.research_answers import ResearchAnswerStore
 from invest_research_agent.research_artifacts import ResearchArtifactStore
-from invest_research_agent.research_models import ResearchAnswer, ResearchAnswerPoint, ResearchEnrichmentResult, ResearchEvidence
+from invest_research_agent.research_models import ParsedNote, ResearchAnswer, ResearchAnswerPoint, ResearchEnrichmentResult, ResearchEvidence
 from invest_research_agent.research_models import ResearchNoteSections
 from invest_research_agent.stt import SttHealthStatus
 from invest_research_agent.transcript_artifacts import TranscriptArtifactWriter
@@ -100,6 +100,112 @@ def test_cli_enrich_notes_outputs_json_without_orchestrator(tmp_path: Path, monk
     payload = json.loads(capsys.readouterr().out)
     assert payload[0]["note_title"] == "AI 公司怎麼賺錢？"
     assert payload[0]["evidence"][0]["source"] == "Example Feed"
+
+
+def test_cli_enrich_notes_notebooklm_outputs_json_without_orchestrator(tmp_path: Path, monkeypatch, capsys) -> None:
+    note_path = tmp_path / "sample.md"
+    note_path.write_text(
+        """# GPT-5.5 測試\n\n- **頻道：** inside6202\n- **主題：** AI 工具\n- **來源：** https://youtu.be/abc123\n""",
+        encoding="utf-8",
+    )
+
+    def _fail_build(args):  # noqa: ANN001, ANN202
+        raise AssertionError("_build_orchestrator should not be called")
+
+    class _FakeGateway:
+        def __init__(self, client) -> None:  # noqa: ANN001
+            self.client = client
+
+    class _FakeEnricher:
+        def __init__(self, gateway) -> None:  # noqa: ANN001
+            self.gateway = gateway
+
+        def enrich_notes(self, note_paths, keywords=None, limit=5, notebook_title=None):  # noqa: ANN001
+            del keywords, limit, notebook_title
+            return [
+                ResearchEnrichmentResult(
+                    note_path=note_paths[0],
+                    note_title="GPT-5.5 測試",
+                    keywords=["GPT-5.5", "AI"],
+                    evidence=[
+                        ResearchEvidence(
+                            title="影片來源",
+                            source="NotebookLM",
+                            summary="影片展示 GPT-5.5 的 computer use 能力。",
+                            url="https://youtu.be/abc123",
+                            score=5.0,
+                        )
+                    ],
+                )
+            ]
+
+    monkeypatch.setattr(cli, "_build_orchestrator", _fail_build)
+    monkeypatch.setattr(cli, "NotebookLMMcpGateway", _FakeGateway)
+    monkeypatch.setattr(cli, "NotebookLMNoteEnricher", _FakeEnricher)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "invest-research-agent",
+            "enrich-notes-notebooklm",
+            "--note-paths",
+            str(note_path),
+            "--json",
+        ],
+    )
+
+    cli.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload[0]["note_title"] == "GPT-5.5 測試"
+    assert payload[0]["evidence"][0]["source"] == "NotebookLM"
+
+
+def test_cli_enrich_notes_notebooklm_writes_provider_specific_sidecar(tmp_path: Path, monkeypatch, capsys) -> None:
+    note_path = tmp_path / "sample.md"
+    note_path.write_text(
+        """# GPT-5.5 測試\n\n- **頻道：** inside6202\n- **主題：** AI 工具\n- **來源：** https://youtu.be/abc123\n""",
+        encoding="utf-8",
+    )
+
+    class _FakeGateway:
+        def __init__(self, client) -> None:  # noqa: ANN001
+            self.client = client
+
+    class _FakeEnricher:
+        def __init__(self, gateway) -> None:  # noqa: ANN001
+            self.gateway = gateway
+
+        def enrich_notes(self, note_paths, keywords=None, limit=5, notebook_title=None):  # noqa: ANN001
+            del keywords, limit, notebook_title
+            return [
+                ResearchEnrichmentResult(
+                    note_path=note_paths[0],
+                    note_title="GPT-5.5 測試",
+                    keywords=["GPT-5.5"],
+                    evidence=[ResearchEvidence(title="影片來源", source="NotebookLM")],
+                )
+            ]
+
+    monkeypatch.setattr(cli, "NotebookLMMcpGateway", _FakeGateway)
+    monkeypatch.setattr(cli, "NotebookLMNoteEnricher", _FakeEnricher)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "invest-research-agent",
+            "enrich-notes-notebooklm",
+            "--note-paths",
+            str(note_path),
+        ],
+    )
+
+    cli.main()
+
+    output = capsys.readouterr().out
+    sidecar = note_path.with_suffix(".notebooklm.research.json")
+    assert sidecar.exists()
+    assert "NotebookLM 研究輸出" in output
 
 
 def test_cli_prepare_analysis_initializes_pending_artifact(tmp_path: Path, monkeypatch, capsys) -> None:

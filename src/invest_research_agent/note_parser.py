@@ -42,6 +42,7 @@ def parse_markdown_note(path: Path | str) -> ParsedNote:
         title=title,
         topic=metadata.get("主題", ""),
         channel=metadata.get("頻道", ""),
+        source_url=metadata.get("來源", ""),
         content=content,
     )
 

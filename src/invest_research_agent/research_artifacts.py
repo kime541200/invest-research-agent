@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from invest_research_agent.analysis_artifacts import AnalysisArtifact
-from invest_research_agent.research_models import ResearchEvidence, ResearchNoteSections
+from invest_research_agent.research_models import ResearchEnrichmentResult, ResearchEvidence, ResearchNoteSections
 from invest_research_agent.transcript_artifacts import TranscriptArtifact
 
 
@@ -21,8 +21,8 @@ class ResearchArtifactClaim:
 @dataclass(frozen=True)
 class ResearchArtifact:
     path: Path
-    transcript_path: Path
-    analysis_path: Path
+    transcript_path: Path | None
+    analysis_path: Path | None
     note_path: Path
     title: str
     channel: str
@@ -51,6 +51,44 @@ class ResearchArtifactStore:
             note_path=note_path,
             path=path,
         )
+
+    def build_from_notebooklm(
+        self,
+        *,
+        enrichment: ResearchEnrichmentResult,
+        channel: str,
+        topic: str,
+        output_root: Path | str,
+        output_date: str,
+    ) -> ResearchArtifact:
+        output_dir = Path(output_root) / output_date / _sanitize_path_segment(topic)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        path = output_dir / enrichment.note_path.name.replace(".md", ".research.json")
+        claims = [
+            ResearchArtifactClaim(
+                text=evidence.summary or evidence.title,
+                keywords=list(enrichment.keywords),
+                evidence_points=[evidence.summary] if evidence.summary else [],
+                limitations=[],
+                external_evidence=[evidence],
+            )
+            for evidence in enrichment.evidence
+        ]
+        artifact = ResearchArtifact(
+            path=path,
+            transcript_path=None,
+            analysis_path=None,
+            note_path=enrichment.note_path,
+            title=enrichment.note_title,
+            channel=channel,
+            topic=topic,
+            source_of_truth="notebooklm",
+            claims=claims,
+            overall_risks=[] if enrichment.evidence else ["NotebookLM 未提供足夠 evidence。"],
+            next_actions=[],
+        )
+        self.write(artifact)
+        return artifact
 
     def build_from_analysis_at_path(
         self,
@@ -90,8 +128,8 @@ class ResearchArtifactStore:
     def write(self, artifact: ResearchArtifact) -> Path:
         payload = asdict(artifact)
         payload["path"] = str(artifact.path)
-        payload["transcript_path"] = str(artifact.transcript_path)
-        payload["analysis_path"] = str(artifact.analysis_path)
+        payload["transcript_path"] = str(artifact.transcript_path) if artifact.transcript_path is not None else None
+        payload["analysis_path"] = str(artifact.analysis_path) if artifact.analysis_path is not None else None
         payload["note_path"] = str(artifact.note_path)
         artifact.path.parent.mkdir(parents=True, exist_ok=True)
         artifact.path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -109,10 +147,12 @@ class ResearchArtifactStore:
             )
             for item in payload.get("claims", [])
         ]
+        transcript_path = payload.get("transcript_path")
+        analysis_path = payload.get("analysis_path")
         return ResearchArtifact(
             path=Path(payload["path"]),
-            transcript_path=Path(payload["transcript_path"]),
-            analysis_path=Path(payload["analysis_path"]),
+            transcript_path=Path(transcript_path) if transcript_path else None,
+            analysis_path=Path(analysis_path) if analysis_path else None,
             note_path=Path(payload["note_path"]),
             title=payload.get("title", ""),
             channel=payload.get("channel", ""),

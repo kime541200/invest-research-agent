@@ -1,6 +1,6 @@
 # MCPorter 存取 MCP
 
-這份文件說明如何透過 `mcporter` 直接訪問 `yt-mcp-server`。
+這份文件說明如何透過 `mcporter` 直接訪問本專案使用的 MCP servers，例如 `yt-mcp-server` 與 `nblm-mcp-server`。
 
 `mcporter` 是一個可直接呼叫 MCP server 的 CLI / TypeScript runtime，支援：
 
@@ -21,6 +21,7 @@
 ```bash
 npx mcporter list
 npx mcporter list yt-mcp-server --schema
+npx mcporter list nblm-mcp-server --schema
 ```
 
 ## 常用指令
@@ -37,6 +38,12 @@ npx mcporter list
 npx mcporter list yt-mcp-server --schema
 ```
 
+查看 `nblm-mcp-server` 的 tools 與 schema：
+
+```bash
+npx mcporter list nblm-mcp-server --schema
+```
+
 直接呼叫工具：
 
 ```bash
@@ -45,11 +52,21 @@ npx mcporter call yt-mcp-server.channels_listVideos channel_id=UCVlH0xJHnJxw0Wj8
 npx mcporter call yt-mcp-server.transcripts_getTranscript video_id=7U1qyLstvBU
 ```
 
+NotebookLM MCP 範例：
+
+```bash
+npx mcporter call nblm-mcp-server.list_notebooks
+npx mcporter call nblm-mcp-server.create_notebook title="MCPorter NotebookLM Smoke Test"
+npx mcporter call nblm-mcp-server.start_research notebook_id=<NOTEBOOK_ID> query="Taiwan AI supply chain" mode=fast
+```
+
 若要輸出機器可讀結果，可加上：
 
 ```bash
 npx mcporter list yt-mcp-server --schema --json
+npx mcporter list nblm-mcp-server --schema --json
 npx mcporter call yt-mcp-server.transcripts_getTranscript video_id=7U1qyLstvBU --output json
+npx mcporter call nblm-mcp-server.list_notebooks --output json
 ```
 
 ## 不透過設定檔的 ad-hoc 用法
@@ -59,6 +76,9 @@ npx mcporter call yt-mcp-server.transcripts_getTranscript video_id=7U1qyLstvBU -
 ```bash
 npx mcporter list http://localhost:8088/mcp --all-parameters
 npx mcporter call http://localhost:8088/mcp.transcripts_getTranscript video_id=7U1qyLstvBU
+
+npx mcporter list http://localhost:8089/mcp --all-parameters
+npx mcporter call http://localhost:8089/mcp.list_notebooks
 ```
 
 ## 設定檔位置
@@ -74,8 +94,10 @@ npx mcporter call http://localhost:8088/mcp.transcripts_getTranscript video_id=7
 ## 檢查重點
 
 - `yt-mcp-server` 已先在本機正常啟動
-- `config/mcporter.json` 內的 URL 指向 `http://localhost:8088/mcp`
-- 若有多個環境設定來源，請確認 `mcporter list` 看到的 `yt-mcp-server` 定義是否正確
+- `nblm-mcp-server` 已先在本機正常啟動
+- `config/mcporter.json` 內的 URL 分別指向 `http://localhost:8088/mcp` 與 `http://localhost:8089/mcp`
+- 若有多個環境設定來源，請確認 `mcporter list` 看到的 server 定義是否正確
+- 若 `nblm-mcp-server` 可連線但呼叫失敗，請先檢查 NotebookLM auth 狀態，例如 `~/.notebooklm/profiles/default/storage_state.json`
 
 ## 何時優先用 mcporter
 

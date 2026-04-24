@@ -10,6 +10,8 @@ from invest_research_agent.audio_downloader import AudioDownloader, load_audio_c
 from invest_research_agent.external_research import RssResearchProvider
 from invest_research_agent.mcp_client import McpHttpClient
 from invest_research_agent.note_generator import MarkdownNoteGenerator, NoteContext
+from invest_research_agent.notebooklm_enricher import NotebookLMNoteEnricher
+from invest_research_agent.notebooklm_gateway import NotebookLMMcpGateway
 from invest_research_agent.orchestrator import CollectorOrchestrator
 from invest_research_agent.prediction_market_analyzer import PredictionMarketAnalyzer, render_prediction_market_analysis
 from invest_research_agent.research_answers import ResearchAnswerBuilder, ResearchAnswerStore, render_research_answer
@@ -63,6 +65,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="yt-mcp-server HTTP endpoint",
     )
     parser.add_argument(
+        "--notebooklm-mcp-url",
+        default="http://localhost:8089/mcp",
+        help="nblm-mcp-server HTTP endpoint",
+    )
+    parser.add_argument(
         "--timeout",
         type=float,
         default=30.0,
@@ -88,6 +95,8 @@ def _build_parser() -> argparse.ArgumentParser:
     collect_topic.add_argument("--max-videos-per-channel", type=int, default=5, help="每個頻道抓幾支最新影片")
     collect_topic.add_argument("--initial-video-limit", type=int, default=1, help="第一次處理頻道時最多抓幾支")
     collect_topic.add_argument("--transcript-language", default=None, help="字幕語言，例如 zh-TW")
+    collect_topic.add_argument("--no-notebooklm-first", dest="notebooklm_first", action="store_false", help="停用 NotebookLM-first，改走 transcript / STT 路徑")
+    collect_topic.set_defaults(notebooklm_first=True)
     collect_topic.add_argument("--dry-run", action="store_true", help="只模擬流程，不寫 notes 也不更新狀態")
     collect_topic.add_argument("--json", action="store_true", help="輸出 JSON")
     collect_topic.set_defaults(handler=_handle_collect_topic)
@@ -151,6 +160,16 @@ def _build_parser() -> argparse.ArgumentParser:
     enrich_notes.add_argument("--json", action="store_true", help="輸出 JSON，不寫 sidecar 檔")
     enrich_notes.set_defaults(handler=_handle_enrich_notes, requires_orchestrator=False)
 
+    enrich_notes_notebooklm = subparsers.add_parser("enrich-notes-notebooklm", help="為既有筆記補充 NotebookLM citation-backed 證據")
+    enrich_notes_notebooklm.add_argument("--note-paths", nargs="*", default=None, help="指定一個或多個 note 路徑")
+    enrich_notes_notebooklm.add_argument("--date", default=None, help="只處理 notes/YYYY-MM-DD 內的筆記")
+    enrich_notes_notebooklm.add_argument("--keywords", nargs="*", default=None, help="覆蓋自動抽出的關鍵字")
+    enrich_notes_notebooklm.add_argument("--limit", type=int, default=5, help="每篇筆記最多保留幾筆 NotebookLM 證據")
+    enrich_notes_notebooklm.add_argument("--notebooklm-mcp-url", default="http://localhost:8089/mcp", help="nblm-mcp-server HTTP endpoint")
+    enrich_notes_notebooklm.add_argument("--notebook-title", default=None, help="指定要重用或建立的 NotebookLM notebook title")
+    enrich_notes_notebooklm.add_argument("--json", action="store_true", help="輸出 JSON，不寫 sidecar 檔")
+    enrich_notes_notebooklm.set_defaults(handler=_handle_enrich_notes_notebooklm, requires_orchestrator=False)
+
     prepare_analysis = subparsers.add_parser("prepare-analysis", help="為 transcript artifact 初始化 analysis artifact")
     prepare_analysis.add_argument("--transcript-path", required=True, help="transcript artifact 路徑")
     prepare_analysis.add_argument("--output-path", default=None, help="analysis artifact 輸出路徑")
@@ -196,6 +215,9 @@ def _build_orchestrator(args: argparse.Namespace) -> CollectorOrchestrator:
     stt_client = SttClient(stt_settings) if stt_settings is not None else None
     audio_cache_settings = load_audio_cache_settings(project_root)
     audio_downloader = AudioDownloader(cache_dir / "audio", cache_settings=audio_cache_settings)
+    notebooklm_client = McpHttpClient(endpoint=args.notebooklm_mcp_url, timeout=args.timeout)
+    notebooklm_gateway = NotebookLMMcpGateway(notebooklm_client)
+    notebooklm_enricher = NotebookLMNoteEnricher(notebooklm_gateway)
     return CollectorOrchestrator(
         state_store=state_store,
         topic_router=topic_router,
@@ -206,6 +228,7 @@ def _build_orchestrator(args: argparse.Namespace) -> CollectorOrchestrator:
         analysis_root=analysis_dir,
         audio_downloader=audio_downloader,
         stt_client=stt_client,
+        notebooklm_enricher=notebooklm_enricher,
     )
 
 
@@ -235,6 +258,7 @@ def _handle_collect_topic(args: argparse.Namespace, orchestrator: CollectorOrche
         initialize_analysis=not args.dry_run,
         write_notes=not args.dry_run,
         update_state=not args.dry_run,
+        notebooklm_first=args.notebooklm_first,
     )
 
     if args.json:
@@ -250,6 +274,8 @@ def _handle_collect_topic(args: argparse.Namespace, orchestrator: CollectorOrche
             print(f"  逐字稿: {', '.join(str(path) for path in item.transcript_paths)}")
         if item.analysis_paths:
             print(f"  分析: {', '.join(str(path) for path in item.analysis_paths)}")
+        if item.research_paths:
+            print(f"  研究: {', '.join(str(path) for path in item.research_paths)}")
         if item.note_paths:
             print(f"  筆記: {', '.join(str(path) for path in item.note_paths)}")
 
@@ -266,6 +292,7 @@ def _handle_export_transcripts(args: argparse.Namespace, orchestrator: Collector
         initialize_analysis=True,
         write_notes=False,
         update_state=not args.dry_run,
+        notebooklm_first=False,
     )
 
     if args.json:
@@ -279,6 +306,8 @@ def _handle_export_transcripts(args: argparse.Namespace, orchestrator: Collector
             print(f"  逐字稿: {', '.join(str(path) for path in item.transcript_paths)}")
         if item.analysis_paths:
             print(f"  分析: {', '.join(str(path) for path in item.analysis_paths)}")
+        if item.research_paths:
+            print(f"  研究: {', '.join(str(path) for path in item.research_paths)}")
 
 
 def _handle_list_tags(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
@@ -420,6 +449,53 @@ def _handle_enrich_notes(args: argparse.Namespace, orchestrator: CollectorOrches
         print(f"  命中文章數: {len(result.evidence)}")
 
 
+def _handle_enrich_notes_notebooklm(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
+    del orchestrator
+    client = McpHttpClient(endpoint=args.notebooklm_mcp_url, timeout=args.timeout)
+    gateway = NotebookLMMcpGateway(client)
+    enricher = NotebookLMNoteEnricher(gateway)
+    note_paths = _resolve_note_paths(
+        notes_dir=_resolve_project_path(Path.cwd(), args.notes_dir),
+        note_paths=args.note_paths,
+        date_value=args.date,
+    )
+    results = enricher.enrich_notes(
+        note_paths=note_paths,
+        keywords=args.keywords,
+        limit=args.limit,
+        notebook_title=args.notebook_title,
+    )
+
+    if args.json:
+        payload = [
+            {
+                "note_path": str(item.note_path),
+                "note_title": item.note_title,
+                "keywords": item.keywords,
+                "evidence": [
+                    {
+                        "title": evidence.title,
+                        "source": evidence.source,
+                        "summary": evidence.summary,
+                        "url": evidence.url,
+                        "published_at": evidence.published_at,
+                        "score": evidence.score,
+                    }
+                    for evidence in item.evidence
+                ],
+            }
+            for item in results
+        ]
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+
+    for result in results:
+        output_path = write_enrichment_result(result, result.note_path.with_suffix(".notebooklm.research.json"))
+        print(f"- {result.note_title} | 關鍵字: {', '.join(result.keywords) if result.keywords else '(無)'}")
+        print(f"  NotebookLM 研究輸出: {output_path}")
+        print(f"  NotebookLM 證據數: {len(result.evidence)}")
+
+
 def _handle_prepare_analysis(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
     del orchestrator
     transcript_artifact = read_transcript_artifact(args.transcript_path)
@@ -490,7 +566,7 @@ def _handle_synthesize_answer(args: argparse.Namespace, orchestrator: CollectorO
     print(render_research_answer(answer))
     print("")
     print(f"research answer: {answer.path}")
-    print("下一步：將 research artifact 與這份 answer 交給 `research-answer-synthesizer` 子 Agent；若使用 Codex，請明確要求它 spawn `research-answer-synthesizer`，若使用 Gemini CLI，則可直接用 `@research-answer-synthesizer`。它負責 relevant claim selection，以及 direct mention / inference / needs validation 的主要判斷；Python / CLI 這裡只負責準備 output path、answer JSON 與後續 rendering。")
+    print("下一步：將 research artifact 與這份 answer 交給 `research-answer-synthesizer` 子 Agent；若使用 Codex，請明確要求它 spawn `research-answer-synthesizer`，若使用 Gemini CLI，則可直接用 `@research-answer-synthesizer`。由它負責 relevant claim selection，以及 direct mention / inference / needs validation 的主要判斷；Python / CLI 這裡只負責準備 output path、answer JSON 與後續 rendering。")
 
 
 def _handle_analyze_prediction_market(args: argparse.Namespace, orchestrator: CollectorOrchestrator | None) -> None:
